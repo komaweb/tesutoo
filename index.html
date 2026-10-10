@@ -18,7 +18,7 @@ header { padding:10px 12px; background:#20232a; border-bottom:1px solid var(--li
 .nav-link-button { display:inline-flex; align-items:center; text-decoration:none; }
 h1 { font-size:18px; margin:0; }
 .hint { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.5; }
-#board { position:relative; width:100%; max-width:100vw; height:62vh; min-height:360px; overflow:hidden; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
+#board { position:relative; width:100%; max-width:100vw; aspect-ratio:4 / 3; height:auto; min-height:0; max-height:65vh; margin:0 auto; overflow:hidden; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
 .card { width:clamp(50px, 9.9vw, 79px); aspect-ratio:2.5 / 3.5; position:absolute; left:0; top:0; margin:0; border-radius:5px; border:2px solid #596171; background:#111; overflow:hidden; box-shadow:0 3px 8px #0008; user-select:none; touch-action:none; cursor:grab; }
 .card img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; background:#111; }
 .card.selected { outline:3px solid #80a5ff; outline-offset:1px; }
@@ -41,7 +41,7 @@ button.primary { background:#3858a8; border-color:#6484d8; }
 button:disabled { opacity:.45; cursor:default; }
 input[type=file] { display:none; }
 #status { color:var(--muted); font-size:12px; margin-top:9px; line-height:1.5; }
-@media (min-width:800px) { #board { height:68vh; } .card { width:79px; } }
+@media (min-width:800px) { #board { width:min(100%, calc(65vh * 4 / 3)); max-height:65vh; } .card { width:79px; } }
 
 
 
@@ -61,6 +61,36 @@ button.control-tile:disabled { opacity:.45; }
 #status { flex:1 1 120px; }
 .utility-buttons { flex:0 0 auto; grid-template-columns:repeat(2,64px); }
 
+
+.prob-open { display:block; width:100%; margin:10px 0 0; padding:12px; background:#303642; border-color:#555d6d; }
+.prob-panel { margin:10px 0; padding:14px; background:#20232a; border:1px solid var(--line); border-radius:12px; }
+.prob-panel[hidden] { display:none; }
+.prob-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.prob-head h2 { margin:0; font-size:18px; }
+.prob-note { margin:6px 0 12px; color:var(--muted); font-size:12px; line-height:1.5; }
+.prob-close { flex:0 0 auto; font-size:24px; padding:2px 10px; }
+.prob-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:14px; }
+.prob-field { display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:13px; }
+.prob-field select { background:#11141a; color:var(--text); border:1px solid #555d6d; border-radius:6px; padding:8px; }
+.prob-subhead { font-size:13px; font-weight:600; margin:10px 0; }
+.prob-card-choices { display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:7px; }
+.prob-choice { display:flex; flex-direction:column; align-items:center; gap:4px; border:1px solid #414754; border-radius:8px; padding:6px; background:#292e38; min-width:0; }
+.prob-choice.selected { border-color:#80a5ff; background:#303d58; }
+.prob-choice img { width:100%; max-width:65px; aspect-ratio:5/7; object-fit:contain; background:#111; border-radius:4px; }
+.prob-choice span { font-size:10px; text-align:center; }
+.prob-results { margin-top:12px; padding:10px; background:#17191e; border-radius:8px; font-size:13px; line-height:1.7; }
+.prob-result-row { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #343943; padding:6px 0; }
+.prob-result-row:last-child { border-bottom:0; }
+.fixed-order { border:1px solid #414754; border-radius:8px; padding:10px; min-width:0; }
+.fixed-order h3 { margin:0 0 8px; font-size:14px; }
+.fixed-columns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.fixed-columns strong { font-size:11px; }
+.fixed-list { display:flex; flex-direction:column; gap:5px; margin-top:7px; }
+.fixed-card { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); min-width:0; }
+.fixed-card img { width:29px; aspect-ratio:5/7; object-fit:contain; border-radius:3px; background:#111; }
+.fixed-unknown { width:29px; aspect-ratio:5/7; display:flex; align-items:center; justify-content:center; border:1px solid #777; border-radius:3px; font-size:14px; }
+@media(max-width:650px) { .prob-layout { grid-template-columns:1fr; } .fixed-order { order:2; } .prob-card-choices { grid-template-columns:repeat(auto-fill,minmax(66px,1fr)); } }
+
 </style>
 </head>
 <body>
@@ -73,6 +103,35 @@ button.control-tile:disabled { opacity:.45; }
 <main id="board">
   <div id="empty">デッキ管理からデッキを選んで、ひとり回しを開始してください。</div>
 </main>
+
+<section id="probabilityPanel" class="prob-panel" hidden>
+  <div class="prob-head">
+    <div>
+      <h2>ドロー確率</h2>
+      <p class="prob-note">山札から引く確率を計算します。固定順のカードは順番を反映します。</p>
+    </div>
+    <button id="closeProbability" class="prob-close" type="button" aria-label="確率画面を閉じる">×</button>
+  </div>
+  <div class="prob-layout">
+    <div class="prob-main">
+      <label class="prob-field">引く枚数
+        <select id="drawCount"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>10</option></select>
+      </label>
+      <div class="prob-subhead">確率を調べるカード（複数選択可）</div>
+      <div id="probCardChoices" class="prob-card-choices"></div>
+      <div class="prob-results" id="probResults">デッキを読み込むと、カードごとの確率が表示されます。</div>
+    </div>
+    <aside class="fixed-order">
+      <h3>山札の固定順</h3>
+      <div class="fixed-columns">
+        <div><strong>山上から</strong><div id="fixedTopList" class="fixed-list"></div></div>
+        <div><strong>山下から</strong><div id="fixedBottomList" class="fixed-list"></div></div>
+      </div>
+    </aside>
+  </div>
+</section>
+<button id="openProbability" class="prob-open" type="button">確率計算・固定順</button>
+
 <section id="controls">
   <div class="toolbar">
     <input id="images" type="file" accept="image/*" multiple>
@@ -163,8 +222,8 @@ function makeId() {
 
   function snapshot() {
     return {
-      cards: cards.map(c => ({id:c.id, src:c.src, name:c.name, x:c.x, y:c.y, facedown:c.facedown, tapped:c.tapped, rotation:c.rotation || 0})),
-      deck: deck.map(d => ({src:d.src, name:d.name})),
+      cards: cards.map(c => ({id:c.id, src:c.src, name:c.name, known:!!c.known, x:c.x, y:c.y, facedown:c.facedown, tapped:c.tapped, rotation:c.rotation || 0})),
+      deck: deck.map(d => ({src:d.src, name:d.name, known:!!d.known, fixedTop:!!d.fixedTop, fixedBottom:!!d.fixedBottom})),
       nextId
     };
   }
@@ -276,7 +335,9 @@ function makeId() {
       const j=Math.floor(Math.random()*(i+1));
       [deck[i],deck[j]]=[deck[j],deck[i]];
     }
+    deck.forEach(item => { item.fixedTop=false; item.fixedBottom=false; });
     updateStatus();
+    if (typeof refreshProbabilityUI === 'function') refreshProbabilityUI();
   }
   const shuffleButton = document.getElementById('shuffle');
   function setNormalShuffleButton() {
@@ -294,16 +355,18 @@ function makeId() {
       return;
     }
     saveUndo();
-    const group = chosen.map(c => ({src:c.src, name:c.name}));
+    const group = chosen.map(c => ({src:c.src, name:c.name, known:!!c.known, fixedTop:!!toTop, fixedBottom:!toTop}));
     for (let i = group.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [group[i], group[j]] = [group[j], group[i]];
     }
     if (toTop) {
       // Deck array end is the top; the shuffled group occupies the topmost positions.
+      deck.forEach(item => { item.fixedTop=false; });
       group.forEach(item => deck.push(item));
     } else {
       // Deck array start is the bottom.
+      deck.forEach(item => { item.fixedBottom=false; });
       group.forEach(item => deck.unshift(item));
     }
     chosen.forEach(removeCard);
@@ -311,10 +374,160 @@ function makeId() {
     updateSelected();
     updateStatus();
   }
+
+  const probPanel = document.getElementById('probabilityPanel');
+  const probChoices = document.getElementById('probCardChoices');
+  const probResults = document.getElementById('probResults');
+  const fixedTopList = document.getElementById('fixedTopList');
+  const fixedBottomList = document.getElementById('fixedBottomList');
+  const chosenProbabilityCards = new Set();
+
+  function cardKey(card) { return card.src; }
+  function deckTargetCounts() {
+    const counts = new Map();
+    deck.forEach(item => counts.set(cardKey(item), (counts.get(cardKey(item)) || 0) + 1));
+    return counts;
+  }
+  function fixedTopCount() {
+    let count = 0;
+    for (let i=deck.length-1; i>=0 && deck[i].fixedTop; i--) count++;
+    return count;
+  }
+  function fixedBottomCount() {
+    let count = 0;
+    for (let i=0; i<deck.length && deck[i].fixedBottom; i++) count++;
+    return count;
+  }
+  function fmtPercent(p) { return (p*100).toLocaleString('ja-JP',{maximumFractionDigits:2}) + '%'; }
+  function choose(n,k) {
+    if (k<0 || k>n) return 0;
+    if (k===0 || k===n) return 1;
+    k=Math.min(k,n-k);
+    let out=1;
+    for(let i=1;i<=k;i++) out=out*(n-k+i)/i;
+    return out;
+  }
+  function hypergeomAtLeastOne(pop, hit, draws) {
+    if (draws<=0 || hit<=0 || pop<=0) return 0;
+    if (draws>pop) draws=pop;
+    if (pop-hit < draws) return 1;
+    return 1 - choose(pop-hit,draws)/choose(pop,draws);
+  }
+  function exactAllSelected(pop, selectedCount, draws) {
+    if (draws===0) return 1;
+    if (selectedCount < draws || pop < draws) return 0;
+    return choose(selectedCount,draws)/choose(pop,draws);
+  }
+  function renderFixedOrder() {
+    const topN = fixedTopCount(), bottomN = fixedBottomCount();
+    function renderList(el, items, reverse) {
+      el.innerHTML = '';
+      const seq = reverse ? items.slice().reverse() : items;
+      if (!seq.length) { el.innerHTML = '<span class="small">なし</span>'; return; }
+      seq.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'fixed-card';
+        if (item.known) {
+          const img = document.createElement('img'); img.src = item.src; img.alt=''; row.appendChild(img);
+        } else {
+          const unknown = document.createElement('span'); unknown.className='fixed-unknown'; unknown.textContent='？'; row.appendChild(unknown);
+        }
+        el.appendChild(row);
+      });
+    }
+    renderList(fixedTopList, deck.slice(deck.length-topN), true);
+    renderList(fixedBottomList, deck.slice(0,bottomN), false);
+  }
+  function renderProbabilityChoices() {
+    const all = new Map();
+    deck.forEach(item => { if (!all.has(item.src)) all.set(item.src, item); });
+    cards.forEach(item => { if (!all.has(item.src)) all.set(item.src, item); });
+    probChoices.innerHTML = '';
+    if (!all.size) { probChoices.textContent='デッキがありません。'; return; }
+    all.forEach((item,key) => {
+      const b = document.createElement('button');
+      b.type='button'; b.className='prob-choice' + (chosenProbabilityCards.has(key) ? ' selected':'');
+      const img=document.createElement('img'); img.src=item.src; img.alt='';
+      const span=document.createElement('span'); span.textContent=chosenProbabilityCards.has(key)?'選択中':'選択';
+      b.append(img,span);
+      b.addEventListener('click',()=>{
+        if(chosenProbabilityCards.has(key)) chosenProbabilityCards.delete(key); else chosenProbabilityCards.add(key);
+        renderProbabilityChoices(); calculateProbability();
+      });
+      probChoices.appendChild(b);
+    });
+  }
+  function calculateProbability() {
+    const n = Math.max(1, Number(document.getElementById('drawCount').value)||1);
+    const deckSize = deck.length;
+    if (!deckSize) { probResults.textContent='山札がありません。'; return; }
+    const selectedKeys = [...chosenProbabilityCards];
+    const totalCounts = deckTargetCounts();
+    const topN = fixedTopCount(), bottomN = fixedBottomCount();
+    const fixedTop = deck.slice(deckSize-topN).reverse();
+    const fixedBottom = deck.slice(0,bottomN);
+    const middle = deck.slice(bottomN, deckSize-topN);
+    const k = Math.min(n, deckSize);
+    let selectedHits = 0;
+    selectedKeys.forEach(key => selectedHits += totalCounts.get(key)||0);
+    let anySelectedProbability = 0;
+    let allSelectedProbability = 0;
+    if (selectedKeys.length) {
+      // Enumerate fixed top cards first, then use hypergeometric probability for the randomized middle.
+      const topTaken = Math.min(k, fixedTop.length);
+      const topHits = fixedTop.slice(0,topTaken).filter(x=>selectedKeys.includes(x.src)).length;
+      const afterTop = k-topTaken;
+      const middleHits = selectedKeys.reduce((sum,key)=>sum+(middle.filter(x=>x.src===key).length),0);
+      const middleN = middle.length;
+      const bottomUsed = Math.max(0, afterTop-middleN);
+      const bottomHits = fixedBottom.slice(0,bottomUsed).filter(x=>selectedKeys.includes(x.src)).length;
+      const fixedHits = topHits + bottomHits;
+      const middleDraws = Math.min(afterTop,middleN);
+      const middleSelected = middle.filter(x=>selectedKeys.includes(x.src)).length;
+      if (fixedHits > 0) anySelectedProbability = 1;
+      else anySelectedProbability = hypergeomAtLeastOne(middleN,middleSelected,middleDraws);
+      const fixedDrawnCount = topTaken + bottomUsed;
+      const fixedDrawnAllSelected = fixedHits === fixedDrawnCount;
+      if (fixedDrawnAllSelected) allSelectedProbability = exactAllSelected(middleN,middleSelected,middleDraws);
+      else allSelectedProbability = 0;
+    }
+    let rows = '';
+    selectedKeys.forEach(key => {
+      const sample = allCardSample(key);
+      const count = totalCounts.get(key)||0;
+      let probability;
+      if (fixedTop.slice(0,k).some(x=>x.src===key)) probability=1;
+      else {
+        const fixedTopHits = fixedTop.slice(0,k).filter(x=>x.src===key).length;
+        const remainingDraws = Math.max(0,k-fixedTop.length);
+        const eligibleMiddle = middle.filter(x=>x.src===key).length;
+        probability = fixedTopHits ? 1 : hypergeomAtLeastOne(middle.length,eligibleMiddle,Math.min(remainingDraws,middle.length));
+      }
+      rows += `<div class="prob-result-row"><span>${sample ? '選択カード' : 'カード'}（${count}枚）</span><strong>${fmtPercent(probability)}</strong></div>`;
+    });
+    if (selectedKeys.length) {
+      rows += `<div class="prob-result-row"><span>いずれか1枚以上を引く</span><strong>${fmtPercent(anySelectedProbability)}</strong></div>`;
+      rows += `<div class="prob-result-row"><span>引いたカードがすべて選択カード</span><strong>${fmtPercent(allSelectedProbability)}</strong></div>`;
+    } else rows = '<div>カードを選択すると確率を表示します。</div>';
+    rows += `<div class="small">計算対象：山札 ${deckSize}枚 / ドロー ${k}枚</div>`;
+    probResults.innerHTML=rows;
+  }
+  function allCardSample(key) {
+    return deck.find(x=>x.src===key) || cards.find(x=>x.src===key) || null;
+  }
+  function refreshProbabilityUI() {
+    renderFixedOrder(); renderProbabilityChoices(); calculateProbability();
+  }
+  document.getElementById('openProbability').addEventListener('click',()=>{
+    probPanel.hidden=false; refreshProbabilityUI(); probPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+  document.getElementById('closeProbability').addEventListener('click',()=>{probPanel.hidden=true;});
+  document.getElementById('drawCount').addEventListener('change',calculateProbability);
+
   function drawOne(faceDown, fromBottom=false) {
     if (!deck.length) { alert('山札がありません。画像を追加して山札を作ってください。'); return; }
     const data = fromBottom ? deck.shift() : deck.pop();
-    const card = {id:nextId++, src:data.src, name:data.name, x:12+(cards.length%6)*65, y:12+(Math.floor(cards.length/6)%5)*84, facedown:!!faceDown, tapped:false, rotation:0, z:cards.length+1, el:null};
+    const card = {id:nextId++, src:data.src, name:data.name, known:!faceDown || !!data.known, x:12+(cards.length%6)*65, y:12+(Math.floor(cards.length/6)%5)*84, facedown:!!faceDown, tapped:false, rotation:0, z:cards.length+1, el:null};
     card.x = Math.max(0, Math.min(card.x, board.clientWidth - 50));
     card.y = Math.max(0, Math.min(card.y, board.clientHeight - Math.min(84, board.clientHeight)));
     mountCard(card);
@@ -367,12 +580,12 @@ function makeId() {
   document.getElementById('topDeck').onclick = () => {
     const chosen=selectedCards(); if (chosen.length !== 1) { alert('山札の上へ送るカードを1枚だけ選択してね。'); return; }
     saveUndo();
-    const c=chosen[0]; deck.push({src:c.src,name:c.name}); removeCard(c); selected.clear(); updateStatus();
+    const c=chosen[0]; deck.push({src:c.src,name:c.name,known:!!c.known,fixedTop:true,fixedBottom:false}); removeCard(c); selected.clear(); updateStatus(); refreshProbabilityUI();
   };
   document.getElementById('bottomDeck').onclick = () => {
     const chosen=selectedCards(); if (chosen.length !== 1) { alert('山下へ送るカードを1枚だけ選択してね。'); return; }
     saveUndo();
-    const c=chosen[0]; deck.unshift({src:c.src,name:c.name}); removeCard(c); selected.clear(); updateStatus();
+    const c=chosen[0]; deck.unshift({src:c.src,name:c.name,known:!!c.known,fixedBottom:true,fixedTop:false}); removeCard(c); selected.clear(); updateStatus(); refreshProbabilityUI();
   };
   document.getElementById('shuffleToTop').onclick = () => shuffleSelectedIntoDeck(true);
   document.getElementById('shuffleToBottom').onclick = () => shuffleSelectedIntoDeck(false);
@@ -382,7 +595,7 @@ function makeId() {
     cards.forEach(c => c.el?.remove());
     cards=[];
     selected.clear();
-    deck=state.deck.map(d => ({...d}));
+    deck=state.deck.map(d => ({known:false, fixedTop:false, fixedBottom:false, ...d}));
     nextId=state.nextId;
     state.cards.forEach(data => {
       const card={...data,el:null};
@@ -415,7 +628,7 @@ function makeId() {
         const deckCards = [];
         (savedDeck.cards || []).forEach(item => {
           const count = Math.max(0, Number(item.count) || 0);
-          for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name});
+          for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name, known:false, fixedTop:false, fixedBottom:false});
         });
         deck = deckCards;
         setStartShuffleButton();
@@ -430,6 +643,7 @@ function makeId() {
     document.getElementById('empty').textContent = 'デッキ管理からデッキを選んで、ひとり回しを開始してください。';
   }
   updateStatus();
+  refreshProbabilityUI();
 })();
 </script>
 </body>
