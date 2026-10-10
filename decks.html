@@ -26,14 +26,22 @@ input[type=file] { display:none; }
 .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .row > input[type=text] { flex:1; min-width:180px; }
 .deck-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; }
-.deck-card { background:#292e38; border:1px solid #414754; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.deck-card { background:#292e38; border:1px solid #414754; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; min-width:0; }
 .deck-card h3 { margin:0; font-size:17px; overflow-wrap:anywhere; }
 .deck-card .meta { color:var(--muted); font-size:13px; }
+.deck-list { grid-template-columns:1fr; }
+.deck-preview { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; max-height:900px; overflow-y:auto; padding:6px; background:#191c22; border:1px solid #414754; border-radius:8px; }
+.preview-card { min-width:0; text-align:center; }
+.preview-card img { display:block; width:100%; aspect-ratio:5/7; object-fit:contain; background:#11141a; border-radius:4px; }
+.preview-card span { display:block; margin-top:3px; font-size:10px; color:var(--muted); overflow-wrap:anywhere; }
+.no-preview { color:var(--muted); font-size:12px; padding:8px 0; }
 .card-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:10px; margin-top:14px; }
 .card-item { background:#292e38; border:1px solid #414754; border-radius:10px; padding:9px; display:flex; flex-direction:column; gap:8px; min-width:0; }
 .card-item img { width:100%; height:170px; object-fit:contain; background:#15171c; border-radius:6px; }
 .card-name { font-size:13px; overflow-wrap:anywhere; }
-.card-item label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+.quantity-control { display:grid; grid-template-columns:44px minmax(30px,1fr) 44px; gap:6px; align-items:center; }
+.quantity-control button { min-height:42px; padding:6px; font-size:20px; font-weight:600; touch-action:manipulation; }
+.quantity-value { text-align:center; font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; }
 .card-item .remove { width:100%; padding:7px; }
 .editor-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
 .small { font-size:12px; color:var(--muted); }
@@ -45,8 +53,11 @@ input[type=file] { display:none; }
  header { align-items:flex-start; }
  h1 { font-size:19px; }
  .panel { padding:12px; }
+ .deck-preview { gap:3px; padding:4px; }
+ .preview-card span { font-size:9px; }
  .card-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
  .card-item img { height:145px; }
+ .quantity-control { grid-template-columns:40px minmax(24px,1fr) 40px; gap:4px; }
 }
 </style>
 </head>
@@ -177,8 +188,16 @@ async function renderDecks() {
     const total = (deck.cards || []).reduce((sum, c) => sum + (Number(c.count) || 0), 0);
     const card = document.createElement('article');
     card.className = 'deck-card';
+    const previewCards = [];
+    (deck.cards || []).forEach(c => {
+      const copies = Math.max(0, Math.min(100, Math.floor(Number(c.count) || 0)));
+      for (let i = 0; i < copies; i++) {
+        previewCards.push(`<div class="preview-card"><img loading="lazy" alt="" src="${c.src}"><span>${escapeHTML(c.name || 'カード')}</span></div>`);
+      }
+    });
     card.innerHTML = `<h3>${escapeHTML(deck.name || '名前のないデッキ')}</h3>
       <div class="meta">${(deck.cards || []).length}種類 / ${total}枚</div>
+      ${previewCards.length ? `<div class="deck-preview" aria-label="デッキのカード一覧">${previewCards.join('')}</div>` : `<div class="no-preview">カードがありません。編集から枚数を設定してください。</div>`}
       <div class="row">
         <a class="button primary" href="index.html?deck=${encodeURIComponent(deck.id)}">一人回し</a>
         <button data-edit="${escapeHTML(deck.id)}">編集</button>
@@ -206,16 +225,26 @@ function renderCards() {
     item.className = 'card-item';
     item.innerHTML = `<img alt="" src="${card.src}">
       <div class="card-name">${escapeHTML(card.name)}</div>
-      <label>枚数
-        <input type="number" min="0" max="100" step="1" value="${Number(card.count) || 0}" data-count="${index}">
-      </label>
+      <div class="small">枚数</div>
+      <div class="quantity-control">
+        <button type="button" aria-label="${escapeHTML(card.name)}を1枚減らす" data-minus="${index}">−</button>
+        <span class="quantity-value" data-quantity="${index}">${Math.max(0, Math.min(100, Math.floor(Number(card.count) || 0)))}</span>
+        <button type="button" aria-label="${escapeHTML(card.name)}を1枚増やす" data-plus="${index}">＋</button>
+      </div>
       <button class="remove danger" data-remove="${index}">削除</button>`;
     cardListEl.appendChild(item);
   });
-  cardListEl.querySelectorAll('[data-count]').forEach(input => input.addEventListener('change', () => {
-    const n = Math.max(0, Math.min(100, Math.floor(Number(input.value) || 0)));
-    cardEntries[Number(input.dataset.count)].count = n;
-    input.value = n;
+  cardListEl.querySelectorAll('[data-minus]').forEach(btn => btn.addEventListener('click', () => {
+    const index = Number(btn.dataset.minus);
+    cardEntries[index].count = Math.max(0, Math.floor(Number(cardEntries[index].count) || 0) - 1);
+    const value = cardListEl.querySelector(`[data-quantity="${index}"]`);
+    if (value) value.textContent = cardEntries[index].count;
+  }));
+  cardListEl.querySelectorAll('[data-plus]').forEach(btn => btn.addEventListener('click', () => {
+    const index = Number(btn.dataset.plus);
+    cardEntries[index].count = Math.min(100, Math.floor(Number(cardEntries[index].count) || 0) + 1);
+    const value = cardListEl.querySelector(`[data-quantity="${index}"]`);
+    if (value) value.textContent = cardEntries[index].count;
   }));
   cardListEl.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => {
     cardEntries.splice(Number(btn.dataset.remove), 1);
