@@ -69,6 +69,12 @@ input[type=file] { display:none; }
 .save-modal-actions button, .save-modal-actions a { width:100%; box-sizing:border-box; text-align:center; }
 
 
+.visual-settings { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:14px; }
+.visual-preview { width:100%; aspect-ratio:3/4; max-height:280px; border:1px solid #555d6d; border-radius:10px; background:#1b1e24; background-size:cover; background-position:center; overflow:hidden; position:relative; }
+.visual-preview::after { content:"盤面プレビュー"; position:absolute; left:8px; top:8px; padding:4px 7px; border-radius:5px; background:#0009; color:white; font-size:11px; }
+.back-preview { width:82px; aspect-ratio:5/7; border:4px double #c5d2f2; border-radius:7px; background:radial-gradient(ellipse at center,#364d88 0 13%,transparent 14%),repeating-linear-gradient(45deg,#1c2b50 0 5px,#334b7b 5px 10px); background-size:cover; background-position:center; }
+.visual-settings .small { display:block; line-height:1.5; }
+.preset-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .nav-button { display:inline-flex; align-items:center; justify-content:center; padding:8px 11px; border:1px solid #555d6d; border-radius:8px; background:#303642; color:var(--text); font-size:13px; white-space:nowrap; }
 .nav-button:active { background:#454d5c; }
 </style>
@@ -108,6 +114,40 @@ input[type=file] { display:none; }
   </div>
   <div id="deckList" class="deck-list"></div>
   <div id="emptyDecks" class="empty hidden">まだデッキがありません。「新しいデッキ」から作成してください。</div>
+</section>
+
+<section id="visualSettings" class="panel">
+  <h2>盤面の見た目（全デッキ共通）</h2>
+  <p class="small">背景画像と裏面画像は、すべてのデッキで共通して使われます。背景は盤面いっぱいに表示され、端が切れる場合があります。</p>
+  <div class="visual-settings">
+    <div>
+      <h3 style="margin:0 0 8px;font-size:15px">背景画像</h3>
+      <div id="backgroundPreview" class="visual-preview"></div>
+      <div class="row" style="margin-top:10px">
+        <label class="button" for="backgroundImage">画像を読み込む</label>
+        <input id="backgroundImage" type="file" accept="image/*">
+        <button id="resetBackground">初期背景</button>
+      </div>
+      <div class="preset-row">
+        <button data-bg-preset="blue">青系プリセット</button>
+        <button data-bg-preset="orange">オレンジ系プリセット</button>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin:0 0 8px;font-size:15px">裏面画像</h3>
+      <div id="cardBackPreview" class="back-preview"></div>
+      <div class="row" style="margin-top:10px">
+        <label class="button" for="cardBackImage">画像を読み込む</label>
+        <input id="cardBackImage" type="file" accept="image/*">
+        <button id="resetCardBack">初期裏面</button>
+      </div>
+      <div class="preset-row">
+        <button data-back-preset="blue">青系プリセット</button>
+        <button data-back-preset="orange">オレンジ系プリセット</button>
+      </div>
+    </div>
+  </div>
+  <div id="visualMessage" class="small" role="status" style="margin-top:10px"></div>
 </section>
 
 <section id="editorView" class="hidden">
@@ -184,6 +224,45 @@ function makeId() {
 
 const listView = document.getElementById('listView');
 const editorView = document.getElementById('editorView');
+const VISUAL_PREFS_KEY = 'soloCardBoardVisualPrefs';
+const visualMessage = document.getElementById('visualMessage');
+const bgPreview = document.getElementById('backgroundPreview');
+const backPreview = document.getElementById('cardBackPreview');
+const presetBackground = (tone) => {
+  const lower = tone === 'orange' ? '#252831' : '#1b1e24';
+  const dot = tone === 'orange' ? '#46404a' : '#3b414d';
+  const hand = tone === 'orange' ? '#c87522' : '#303642';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800"><rect width="600" height="800" fill="${lower}"/><defs><pattern id="p" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="${dot}"/></pattern></defs><rect width="600" height="800" fill="url(#p)"/><rect x="28" y="650" width="544" height="118" rx="22" fill="${hand}" opacity=".95"/></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+};
+const presetBack = tone => {
+  const a = tone === 'orange' ? '#66350f' : '#1c2b50';
+  const b = tone === 'orange' ? '#d7832d' : '#334b7b';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="350" height="490" viewBox="0 0 350 490"><rect width="350" height="490" rx="18" fill="${a}"/><path d="M0 0L350 490M-80 0L270 490M80 0L430 490M350 0L0 490M430 0L80 490M270 0L-80 490" stroke="${b}" stroke-width="20"/><rect x="28" y="28" width="294" height="434" rx="20" fill="none" stroke="#d8e0f5" stroke-width="5"/><circle cx="175" cy="245" r="65" fill="none" stroke="#d8e0f5" stroke-width="5"/><path d="M175 190L220 245 175 300 130 245Z" fill="none" stroke="#d8e0f5" stroke-width="5"/></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+};
+function readVisualPrefs() { try { return JSON.parse(localStorage.getItem(VISUAL_PREFS_KEY) || '{}'); } catch { return {}; } }
+function saveVisualPrefs(prefs) { localStorage.setItem(VISUAL_PREFS_KEY, JSON.stringify(prefs)); updateVisualPreviews(); visualMessage.textContent = '見た目の設定を保存しました。'; }
+function updateVisualPreviews() {
+  const prefs = readVisualPrefs();
+  bgPreview.style.backgroundImage = prefs.background ? `url("${prefs.background}")` : `url("${presetBackground('blue')}")`;
+  backPreview.style.backgroundImage = prefs.cardBack ? `url("${prefs.cardBack}")` : `url("${presetBack('blue')}")`;
+}
+async function loadVisualFile(input, key) {
+  const file = input.files && input.files[0]; if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { visualMessage.textContent = '画像は5MB以下にしてください。'; input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = () => { const prefs=readVisualPrefs(); prefs[key]=reader.result; try { saveVisualPrefs(prefs); } catch { visualMessage.textContent='保存できませんでした。別の画像をお試しください。'; } };
+  reader.readAsDataURL(file);
+}
+document.getElementById('backgroundImage').addEventListener('change', e => loadVisualFile(e.target, 'background'));
+document.getElementById('cardBackImage').addEventListener('change', e => loadVisualFile(e.target, 'cardBack'));
+document.getElementById('resetBackground').addEventListener('click', () => { const p=readVisualPrefs(); delete p.background; saveVisualPrefs(p); });
+document.getElementById('resetCardBack').addEventListener('click', () => { const p=readVisualPrefs(); delete p.cardBack; saveVisualPrefs(p); });
+document.querySelectorAll('[data-bg-preset]').forEach(b => b.addEventListener('click', () => { const p=readVisualPrefs(); p.background=presetBackground(b.dataset.bgPreset); saveVisualPrefs(p); }));
+document.querySelectorAll('[data-back-preset]').forEach(b => b.addEventListener('click', () => { const p=readVisualPrefs(); p.cardBack=presetBack(b.dataset.backPreset); saveVisualPrefs(p); }));
+updateVisualPreviews();
+
 const deckListEl = document.getElementById('deckList');
 const emptyDecks = document.getElementById('emptyDecks');
 const cardListEl = document.getElementById('cardList');
