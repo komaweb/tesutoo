@@ -71,7 +71,13 @@ button.control-tile:disabled { opacity:.45; }
 .prob-close { flex:0 0 auto; font-size:24px; padding:2px 10px; }
 .prob-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:14px; }
 .prob-field { display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:13px; }
-.prob-field select { background:#11141a; color:var(--text); border:1px solid #555d6d; border-radius:6px; padding:8px; }
+.prob-count-control { display:inline-flex; align-items:center; gap:10px; margin-left:4px; }
+.prob-count-control button { width:34px; height:34px; padding:0; font-size:21px; line-height:1; border:1px solid #555d6d; border-radius:7px; background:#292e38; color:var(--text); }
+.prob-count-control button:disabled { opacity:.35; }
+#drawCountValue { min-width:2ch; text-align:center; font-size:16px; font-weight:700; }
+.prob-complement { color:#ff7777; font-weight:500; white-space:nowrap; }
+.prob-result-row strong { text-align:right; }
+.prob-result-values { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:5px; text-align:right; }
 .prob-subhead { font-size:13px; font-weight:600; margin:10px 0; }
 .prob-card-choices { display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:7px; }
 .prob-choice { display:flex; flex-direction:column; align-items:center; gap:4px; border:1px solid #414754; border-radius:8px; padding:6px; background:#292e38; min-width:0; }
@@ -117,9 +123,13 @@ button.control-tile:disabled { opacity:.45; }
   </div>
   <div class="prob-layout">
     <div class="prob-main">
-      <label class="prob-field">引く枚数
-        <select id="drawCount"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>10</option></select>
-      </label>
+      <div class="prob-field"><span>引く枚数</span>
+        <div class="prob-count-control">
+          <button id="drawCountMinus" type="button" aria-label="引く枚数を減らす">−</button>
+          <span id="drawCountValue" aria-live="polite">1</span>
+          <button id="drawCountPlus" type="button" aria-label="引く枚数を増やす">＋</button>
+        </div>
+      </div>
       <div class="prob-subhead">確率を調べるカード（複数選択可）</div>
       <div id="probCardChoices" class="prob-card-choices"></div>
       <div class="prob-results" id="probResults">デッキを読み込むと、カードごとの確率が表示されます。</div>
@@ -410,10 +420,20 @@ function makeId() {
     return out;
   }
   function hypergeomAtLeastOne(pop, hit, draws) {
-    if (draws<=0 || hit<=0 || pop<=0) return 0;
-    draws=Math.min(draws,pop);
-    if (pop-hit < draws) return 1;
-    return 1 - choose(pop-hit,draws)/choose(pop,draws);
+    return hypergeomAtLeastK(pop, hit, draws, 1);
+  }
+  function hypergeomAtLeastK(pop, hit, draws, minimum) {
+    if (minimum <= 0) return 1;
+    if (draws <= 0 || hit <= 0 || pop <= 0 || minimum > draws) return 0;
+    pop = Math.floor(pop); hit = Math.max(0, Math.min(Math.floor(hit), pop));
+    draws = Math.min(Math.floor(draws), pop);
+    let probability = 0;
+    const low = Math.max(minimum, draws - (pop - hit));
+    const high = Math.min(draws, hit);
+    const denominator = choose(pop, draws);
+    if (!denominator) return 0;
+    for (let k = low; k <= high; k++) probability += choose(hit, k) * choose(pop-hit, draws-k) / denominator;
+    return Math.max(0, Math.min(1, probability));
   }
   function exactAllSelected(pop, selectedCount, draws) {
     if (draws===0) return 1;
@@ -473,7 +493,7 @@ function makeId() {
     return counts;
   }
   function calculateProbability() {
-    const requested = Math.max(1, Number(document.getElementById('drawCount').value)||1);
+    const requested = Math.max(1, Number(document.getElementById('drawCountValue').textContent)||1);
     const deckSize = deck.length;
     if (!deckSize) { probResults.textContent='山札がありません。'; return; }
     const selectedKeys = [...chosenProbabilityCards];
@@ -525,11 +545,14 @@ function makeId() {
       rows += `<div class="prob-result-row"><div class="prob-result-name">${img}<span>このカード（デッキ採用 ${originalCounts.get(key)||0}枚）</span></div><strong>${fmtPercent(probability)}</strong></div>`;
     });
     if (selectedKeys.length) {
-      let anyProbability = fixedSelectedCount>0 ? 1 : hypergeomAtLeastOne(effectivePool,totalSelected,middleDraws);
+      for (let minimum = 1; minimum <= draws; minimum++) {
+        const needFromMiddle = Math.max(0, minimum - fixedSelectedCount);
+        const probability = needFromMiddle === 0 ? 1 : hypergeomAtLeastK(effectivePool, totalSelected, middleDraws, needFromMiddle);
+        rows += `<div class="prob-result-row"><span>選択カードを${minimum}枚以上引く</span><div class="prob-result-values"><strong>${fmtPercent(probability)}</strong><span class="prob-complement">(${fmtPercent(1-probability)})</span></div></div>`;
+      }
       let allProbability = 0;
       if (fixedNonSelectedCount===0) allProbability = exactAllSelected(effectivePool,totalSelected,middleDraws);
-      rows += `<div class="prob-result-row"><span>いずれか1枚以上を引く</span><strong>${fmtPercent(anyProbability)}</strong></div>`;
-      rows += `<div class="prob-result-row"><span>引いたカードがすべて選択カード</span><strong>${fmtPercent(allProbability)}</strong></div>`;
+      rows += `<div class="prob-result-row"><span>引いたカードがすべて選択カード</span><div class="prob-result-values"><strong>${fmtPercent(allProbability)}</strong><span class="prob-complement">(${fmtPercent(1-allProbability)})</span></div></div>`;
     } else rows = '<div>カードを選択すると確率を表示します。</div>';
     rows += `<div class="small">計算対象：山札 ${deckSize}枚 / ドロー ${draws}枚。場の裏向きカード ${hiddenOnBoard}枚は正体を参照せず、未知のカードとして計算します。</div>`;
     probResults.innerHTML=rows;
@@ -544,7 +567,15 @@ function makeId() {
     probPanel.hidden=false; refreshProbabilityUI(); probPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
   });
   document.getElementById('closeProbability').addEventListener('click',()=>{probPanel.hidden=true;});
-  document.getElementById('drawCount').addEventListener('change',calculateProbability);
+  let assumedDrawCount = 1;
+  function updateDrawCountControl() {
+    document.getElementById('drawCountValue').textContent = String(assumedDrawCount);
+    document.getElementById('drawCountMinus').disabled = assumedDrawCount <= 1;
+    document.getElementById('drawCountPlus').disabled = assumedDrawCount >= 40;
+    calculateProbability();
+  }
+  document.getElementById('drawCountMinus').addEventListener('click', () => { assumedDrawCount = Math.max(1, assumedDrawCount-1); updateDrawCountControl(); });
+  document.getElementById('drawCountPlus').addEventListener('click', () => { assumedDrawCount = Math.min(40, assumedDrawCount+1); updateDrawCountControl(); });
 
   function drawOne(faceDown, fromBottom=false) {
     if (!deck.length) { alert('山札がありません。画像を追加して山札を作ってください。'); return; }
