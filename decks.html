@@ -59,16 +59,39 @@ input[type=file] { display:none; }
  .card-item img { height:145px; }
  .quantity-control { grid-template-columns:40px minmax(24px,1fr) 40px; gap:4px; }
 }
+
+.save-modal-backdrop { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.68); }
+.save-modal-backdrop[hidden] { display:none !important; }
+.save-modal { position:relative; width:min(100%,440px); background:#252a33; color:var(--text); border:1px solid #4a5260; border-radius:16px; padding:28px 18px 18px; box-shadow:0 18px 55px rgba(0,0,0,.42); }
+.save-modal h2 { margin:0 0 14px; font-size:20px; line-height:1.45; }
+.save-modal p { margin:0 0 20px; line-height:1.7; }
+.save-modal-close { position:absolute; top:7px; right:8px; border:0; background:transparent; font-size:25px; line-height:1; padding:6px 8px; color:inherit; }
+.save-modal-actions { display:flex; flex-direction:column; gap:9px; }
+.save-modal-actions button, .save-modal-actions a { width:100%; box-sizing:border-box; text-align:center; }
+
 </style>
 </head>
 <body>
+
+<div id="saveSuccessModal" class="save-modal-backdrop" hidden>
+  <section class="save-modal" role="dialog" aria-modal="true" aria-labelledby="saveSuccessTitle">
+    <button type="button" class="save-modal-close" id="closeSaveSuccess" aria-label="このウィンドウを閉じる">×</button>
+    <h2 id="saveSuccessTitle">デッキを保存しました。</h2>
+    <p>このデッキでひとり回しをしますか？</p>
+    <div class="save-modal-actions">
+      <a id="startSavedDeck" class="button primary" href="index.html">はい</a>
+      <button type="button" id="returnToDeckEditor">デッキ編集画面にもどる</button>
+    </div>
+  </section>
+</div>
+
 <main>
 <header>
   <div>
     <h1>デッキ管理</h1>
     <p style="margin:5px 0 0">デッキとカード画像は、このブラウザ内に保存されます。</p>
   </div>
-  <a href="index.html">一人回し盤へ</a>
+  <a href="index.html">ひとり回し盤へ</a>
 </header>
 
 <section id="listView">
@@ -97,7 +120,6 @@ input[type=file] { display:none; }
       <label class="button" for="cardImages">＋ カード画像を追加</label>
       <input id="cardImages" type="file" accept="image/*" multiple>
       <button id="saveDeckBtn" class="primary">保存</button>
-      <button id="launchBtn" class="orange">このデッキで一人回し</button>
     </div>
     <p class="small">同じカードは画像を1枚だけ登録し、枚数を指定してください。画像はブラウザ内に保存されます。</p>
     <div id="message"></div>
@@ -199,7 +221,7 @@ async function renderDecks() {
       <div class="meta">${(deck.cards || []).length}種類 / ${total}枚</div>
       ${previewCards.length ? `<div class="deck-preview" aria-label="デッキのカード一覧">${previewCards.join('')}</div>` : `<div class="no-preview">カードがありません。編集から枚数を設定してください。</div>`}
       <div class="row">
-        <a class="button primary" href="index.html?deck=${encodeURIComponent(deck.id)}">一人回し</a>
+        <a class="button primary" href="index.html?deck=${encodeURIComponent(deck.id)}">ひとり回し</a>
         <button data-edit="${escapeHTML(deck.id)}">編集</button>
         <button class="danger" data-delete="${escapeHTML(deck.id)}">削除</button>
       </div>`;
@@ -275,8 +297,10 @@ async function saveCurrentDeck() {
   try {
     await putDeck(deck);
     editingDeck = deck;
-    message.textContent = '保存しました。';
+    message.textContent = '';
     await renderDecks();
+    document.getElementById('startSavedDeck').href = `index.html?deck=${encodeURIComponent(deck.id)}`;
+    document.getElementById('saveSuccessModal').hidden = false;
     return true;
   } catch (e) {
     message.textContent = '保存できませんでした。ブラウザの保存容量を確認してください。';
@@ -286,9 +310,6 @@ async function saveCurrentDeck() {
 document.getElementById('newDeckBtn').addEventListener('click', () => openEditor());
 document.getElementById('backBtn').addEventListener('click', closeEditor);
 document.getElementById('saveDeckBtn').addEventListener('click', saveCurrentDeck);
-document.getElementById('launchBtn').addEventListener('click', async () => {
-  if (await saveCurrentDeck()) location.href = `index.html?deck=${encodeURIComponent(editingDeck.id)}`;
-});
 document.getElementById('cardImages').addEventListener('change', async e => {
   const files = [...(e.target.files || [])];
   for (const file of files) {
@@ -317,6 +338,18 @@ document.getElementById('cardImages').addEventListener('change', async e => {
     emptyDecks.classList.remove('hidden');
   }
 })();
+
+document.getElementById('closeSaveSuccess').addEventListener('click', () => {
+  document.getElementById('saveSuccessModal').hidden = true;
+});
+document.getElementById('returnToDeckEditor').addEventListener('click', () => {
+  document.getElementById('saveSuccessModal').hidden = true;
+  editorView.scrollIntoView({behavior:'smooth', block:'start'});
+});
+document.getElementById('saveSuccessModal').addEventListener('click', event => {
+  if (event.target.id === 'saveSuccessModal') event.target.hidden = true;
+});
+
 </script>
 </body>
 </html>

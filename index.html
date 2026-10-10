@@ -40,6 +40,10 @@ button:disabled { opacity:.45; cursor:default; }
 input[type=file] { display:none; }
 #status { color:var(--muted); font-size:12px; margin-top:9px; line-height:1.5; }
 @media (min-width:800px) { #board { height:68vh; } .card { width:79px; } }
+
+button.shuffle-start { background:#258447; border-color:#48b96e; color:#fff; font-weight:600; }
+button.shuffle-start:active { background:#1d6b39; }
+
 </style>
 </head>
 <body>
@@ -50,13 +54,13 @@ input[type=file] { display:none; }
   </div>
 </header>
 <main id="board">
-  <div id="empty">デッキ管理からデッキを選んで、一人回しを開始してください。</div>
+  <div id="empty">デッキ管理からデッキを選んで、ひとり回しを開始してください。</div>
 </main>
 <section id="controls">
   <div class="toolbar">
     <a class="file-label nav-link-button" href="decks.html">デッキ管理へ</a>
     <input id="images" type="file" accept="image/*" multiple>
-    <button id="shuffle">山札をシャッフル</button>
+    <button id="shuffle">山札シャッフル</button>
     <button id="draw">ドロー</button>
     <button id="drawDown">裏向きドロー</button>
     <button id="drawBottom">山下からドロー</button>
@@ -66,6 +70,8 @@ input[type=file] { display:none; }
     <button id="rotate90">90度回転</button>
     <button id="topDeck">山上へ</button>
     <button id="bottomDeck">山下へ</button>
+    <button id="shuffleToTop">シャッフルして山上へ</button>
+    <button id="shuffleToBottom">シャッフルして山下へ</button>
   </div>
   <div class="control-footer">
     <div id="status">山札 0枚 / 選択 0枚</div>
@@ -253,6 +259,39 @@ function makeId() {
     }
     updateStatus();
   }
+  const shuffleButton = document.getElementById('shuffle');
+  function setNormalShuffleButton() {
+    shuffleButton.textContent = '山札シャッフル';
+    shuffleButton.classList.remove('shuffle-start');
+  }
+  function setStartShuffleButton() {
+    shuffleButton.textContent = 'シャッフルしてひとり回しを始める';
+    shuffleButton.classList.add('shuffle-start');
+  }
+  function shuffleSelectedIntoDeck(toTop) {
+    const chosen = selectedCards();
+    if (!chosen.length) {
+      alert('山札に戻すカードを1枚以上選択してね。');
+      return;
+    }
+    saveUndo();
+    const group = chosen.map(c => ({src:c.src, name:c.name}));
+    for (let i = group.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [group[i], group[j]] = [group[j], group[i]];
+    }
+    if (toTop) {
+      // Deck array end is the top; the shuffled group occupies the topmost positions.
+      group.forEach(item => deck.push(item));
+    } else {
+      // Deck array start is the bottom.
+      group.forEach(item => deck.unshift(item));
+    }
+    chosen.forEach(removeCard);
+    selected.clear();
+    updateSelected();
+    updateStatus();
+  }
   function drawOne(faceDown, fromBottom=false) {
     if (!deck.length) { alert('山札がありません。画像を追加して山札を作ってください。'); return; }
     const data = fromBottom ? deck.shift() : deck.pop();
@@ -276,7 +315,7 @@ function makeId() {
   document.getElementById('drawDown').onclick = () => { if (deck.length) saveUndo(); drawOne(true, false); };
   document.getElementById('drawBottom').onclick = () => { if (deck.length) saveUndo(); drawOne(false, true); };
   document.getElementById('drawBottomDown').onclick = () => { if (deck.length) saveUndo(); drawOne(true, true); };
-  document.getElementById('shuffle').onclick = () => { if (deck.length > 1) saveUndo(); shuffleDeck(); };
+  document.getElementById('shuffle').onclick = () => { if (deck.length > 1) saveUndo(); shuffleDeck(); setNormalShuffleButton(); };
   document.getElementById('flip').onclick = () => {
     const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
     chosen.forEach(c => { c.facedown=!c.facedown; applyVisual(c); });
@@ -306,6 +345,8 @@ function makeId() {
     saveUndo();
     const c=chosen[0]; deck.unshift({src:c.src,name:c.name}); removeCard(c); selected.clear(); updateStatus();
   };
+  document.getElementById('shuffleToTop').onclick = () => shuffleSelectedIntoDeck(true);
+  document.getElementById('shuffleToBottom').onclick = () => shuffleSelectedIntoDeck(false);
   document.getElementById('undo').onclick = () => {
     if (!undoStack.length) return;
     const state=undoStack.pop();
@@ -323,6 +364,10 @@ function makeId() {
     updateStatus();
   };
   document.getElementById('clear').onclick = () => { selected.clear(); updateSelected(); };
+  // Any other button action ends the special "start" state and restores the regular label.
+  document.querySelectorAll('button:not(#shuffle)').forEach(button => {
+    button.addEventListener('click', setNormalShuffleButton);
+  });
   // Prevent Safari's gesture zoom and double-tap zoom on the board.
   document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
   document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
@@ -347,7 +392,8 @@ function makeId() {
           for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name});
         });
         deck = deckCards;
-        shuffleDeck();
+        setStartShuffleButton();
+        updateStatus();
       } else {
         document.getElementById('empty').textContent = 'デッキが見つかりません。デッキ管理から選び直してください。';
       }
@@ -355,7 +401,7 @@ function makeId() {
       document.getElementById('empty').textContent = '保存データを読み込めませんでした。デッキ管理から確認してください。';
     }
   } else {
-    document.getElementById('empty').textContent = 'デッキ管理からデッキを選んで、一人回しを開始してください。';
+    document.getElementById('empty').textContent = 'デッキ管理からデッキを選んで、ひとり回しを開始してください。';
   }
   updateStatus();
 })();
