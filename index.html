@@ -79,7 +79,10 @@ button.control-tile:disabled { opacity:.45; }
 .prob-choice img { width:100%; max-width:65px; aspect-ratio:5/7; object-fit:contain; background:#111; border-radius:4px; }
 .prob-choice span { font-size:10px; text-align:center; }
 .prob-results { margin-top:12px; padding:10px; background:#17191e; border-radius:8px; font-size:13px; line-height:1.7; }
-.prob-result-row { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #343943; padding:6px 0; }
+.prob-result-row { display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid #343943; padding:6px 0; }
+.prob-result-name { display:flex; align-items:center; gap:7px; min-width:0; }
+.prob-result-name img { width:28px; height:40px; object-fit:contain; border-radius:3px; background:#111; flex:0 0 auto; }
+.prob-result-name span { overflow-wrap:anywhere; }
 .prob-result-row:last-child { border-bottom:0; }
 .fixed-order { border:1px solid #414754; border-radius:8px; padding:10px; min-width:0; }
 .fixed-order h3 { margin:0 0 8px; font-size:14px; }
@@ -222,7 +225,7 @@ function makeId() {
 
   function snapshot() {
     return {
-      cards: cards.map(c => ({id:c.id, src:c.src, name:c.name, known:!!c.known, x:c.x, y:c.y, facedown:c.facedown, tapped:c.tapped, rotation:c.rotation || 0})),
+      cards: cards.map(c => ({id:c.id, src:c.src, name:c.name, known:!!c.known, unknown:!!c.unknown, x:c.x, y:c.y, facedown:c.facedown, tapped:c.tapped, rotation:c.rotation || 0})),
       deck: deck.map(d => ({src:d.src, name:d.name, known:!!d.known, fixedTop:!!d.fixedTop, fixedBottom:!!d.fixedBottom})),
       nextId
     };
@@ -355,7 +358,7 @@ function makeId() {
       return;
     }
     saveUndo();
-    const group = chosen.map(c => ({src:c.src, name:c.name, known:!!c.known, fixedTop:!!toTop, fixedBottom:!toTop}));
+    const group = chosen.map(c => ({src:c.unknown ? null : c.src, name:c.unknown ? null : c.name, known:!c.unknown && !!c.known, fixedTop:!!toTop, fixedBottom:!toTop}));
     for (let i = group.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [group[i], group[j]] = [group[j], group[i]];
@@ -382,10 +385,14 @@ function makeId() {
   const fixedBottomList = document.getElementById('fixedBottomList');
   const chosenProbabilityCards = new Set();
 
-  function cardKey(card) { return card.src; }
+
+  function cardKey(card) { return card && card.src ? card.src : '__unknown__'; }
   function deckTargetCounts() {
     const counts = new Map();
-    deck.forEach(item => counts.set(cardKey(item), (counts.get(cardKey(item)) || 0) + 1));
+    deck.forEach(item => {
+      const key = item.known && item.src ? item.src : '__unknown__';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
     return counts;
   }
   function fixedTopCount() {
@@ -398,7 +405,7 @@ function makeId() {
     for (let i=0; i<deck.length && deck[i].fixedBottom; i++) count++;
     return count;
   }
-  function fmtPercent(p) { return (p*100).toLocaleString('ja-JP',{maximumFractionDigits:2}) + '%'; }
+  function fmtPercent(p) { return (Math.max(0,Math.min(1,p))*100).toLocaleString('ja-JP',{maximumFractionDigits:2}) + '%'; }
   function choose(n,k) {
     if (k<0 || k>n) return 0;
     if (k===0 || k===n) return 1;
@@ -409,7 +416,7 @@ function makeId() {
   }
   function hypergeomAtLeastOne(pop, hit, draws) {
     if (draws<=0 || hit<=0 || pop<=0) return 0;
-    if (draws>pop) draws=pop;
+    draws=Math.min(draws,pop);
     if (pop-hit < draws) return 1;
     return 1 - choose(pop-hit,draws)/choose(pop,draws);
   }
@@ -438,12 +445,14 @@ function makeId() {
     renderList(fixedTopList, deck.slice(deck.length-topN), true);
     renderList(fixedBottomList, deck.slice(0,bottomN), false);
   }
+
   function renderProbabilityChoices() {
     const all = new Map();
-    deck.forEach(item => { if (!all.has(item.src)) all.set(item.src, item); });
-    cards.forEach(item => { if (!all.has(item.src)) all.set(item.src, item); });
+    // Only cards whose identity is publicly known can be selected as named targets.
+    deck.forEach(item => { if (item.known && item.src && !all.has(item.src)) all.set(item.src, item); });
+    cards.forEach(item => { if (!item.unknown && item.src && !all.has(item.src)) all.set(item.src, item); });
     probChoices.innerHTML = '';
-    if (!all.size) { probChoices.textContent='デッキがありません。'; return; }
+    if (!all.size) { probChoices.textContent='正体が分かっているカードがありません。'; return; }
     all.forEach((item,key) => {
       const b = document.createElement('button');
       b.type='button'; b.className='prob-choice' + (chosenProbabilityCards.has(key) ? ' selected':'');
@@ -462,54 +471,48 @@ function makeId() {
     const deckSize = deck.length;
     if (!deckSize) { probResults.textContent='山札がありません。'; return; }
     const selectedKeys = [...chosenProbabilityCards];
-    const totalCounts = deckTargetCounts();
+    const isSelected = item => !!(item && item.known && item.src && selectedKeys.includes(item.src));
     const topN = fixedTopCount(), bottomN = fixedBottomCount();
     const fixedTop = deck.slice(deckSize-topN).reverse();
     const fixedBottom = deck.slice(0,bottomN);
     const middle = deck.slice(bottomN, deckSize-topN);
-    const k = Math.min(n, deckSize);
-    let selectedHits = 0;
-    selectedKeys.forEach(key => selectedHits += totalCounts.get(key)||0);
-    let anySelectedProbability = 0;
-    let allSelectedProbability = 0;
-    if (selectedKeys.length) {
-      // Enumerate fixed top cards first, then use hypergeometric probability for the randomized middle.
-      const topTaken = Math.min(k, fixedTop.length);
-      const topHits = fixedTop.slice(0,topTaken).filter(x=>selectedKeys.includes(x.src)).length;
-      const afterTop = k-topTaken;
-      const middleHits = selectedKeys.reduce((sum,key)=>sum+(middle.filter(x=>x.src===key).length),0);
-      const middleN = middle.length;
-      const bottomUsed = Math.max(0, afterTop-middleN);
-      const bottomHits = fixedBottom.slice(0,bottomUsed).filter(x=>selectedKeys.includes(x.src)).length;
-      const fixedHits = topHits + bottomHits;
-      const middleDraws = Math.min(afterTop,middleN);
-      const middleSelected = middle.filter(x=>selectedKeys.includes(x.src)).length;
-      if (fixedHits > 0) anySelectedProbability = 1;
-      else anySelectedProbability = hypergeomAtLeastOne(middleN,middleSelected,middleDraws);
-      const fixedDrawnCount = topTaken + bottomUsed;
-      const fixedDrawnAllSelected = fixedHits === fixedDrawnCount;
-      if (fixedDrawnAllSelected) allSelectedProbability = exactAllSelected(middleN,middleSelected,middleDraws);
-      else allSelectedProbability = 0;
-    }
+    const draws = Math.min(n,deckSize);
+    const drawnTop = fixedTop.slice(0,draws);
+    const remainingAfterTop = Math.max(0,draws-drawnTop.length);
+    const drawnBottomCount = Math.max(0,remainingAfterTop-middle.length);
+    const drawnBottom = fixedBottom.slice(0,drawnBottomCount);
+    const fixedDrawn = [...drawnTop,...drawnBottom];
+    const middleDraws = Math.min(remainingAfterTop,middle.length);
+    const middleSize = middle.length;
+    const knownMiddleSelected = middle.filter(isSelected).length;
+    const fixedSelectedCount = fixedDrawn.filter(isSelected).length;
+    const fixedNonSelectedCount = fixedDrawn.length-fixedSelectedCount;
+    const unknownCount = itemCount => itemCount.filter(item=>!(item && item.known && item.src)).length;
     let rows = '';
     selectedKeys.forEach(key => {
       const sample = allCardSample(key);
-      const count = totalCounts.get(key)||0;
+      const count = deck.filter(item=>item.known && item.src===key).length;
+      const topHas = drawnTop.some(item=>item.known && item.src===key);
       let probability;
-      if (fixedTop.slice(0,k).some(x=>x.src===key)) probability=1;
+      if (topHas) probability=1;
       else {
-        const fixedTopHits = fixedTop.slice(0,k).filter(x=>x.src===key).length;
-        const remainingDraws = Math.max(0,k-fixedTop.length);
-        const eligibleMiddle = middle.filter(x=>x.src===key).length;
-        probability = fixedTopHits ? 1 : hypergeomAtLeastOne(middle.length,eligibleMiddle,Math.min(remainingDraws,middle.length));
+        const targetInMiddle=middle.filter(item=>item.known && item.src===key).length;
+        probability=hypergeomAtLeastOne(middleSize,targetInMiddle,middleDraws);
+        if (!probability && drawnBottom.some(item=>item.known && item.src===key)) probability=1;
       }
-      rows += `<div class="prob-result-row"><span>${sample ? '選択カード' : 'カード'}（${count}枚）</span><strong>${fmtPercent(probability)}</strong></div>`;
+      const img = sample ? `<img src="${sample.src}" alt="">` : '';
+      rows += `<div class="prob-result-row"><div class="prob-result-name">${img}<span>このカード（山札内 ${count}枚）</span></div><strong>${fmtPercent(probability)}</strong></div>`;
     });
     if (selectedKeys.length) {
-      rows += `<div class="prob-result-row"><span>いずれか1枚以上を引く</span><strong>${fmtPercent(anySelectedProbability)}</strong></div>`;
-      rows += `<div class="prob-result-row"><span>引いたカードがすべて選択カード</span><strong>${fmtPercent(allSelectedProbability)}</strong></div>`;
+      const anyProbability = fixedSelectedCount > 0 ? 1 : hypergeomAtLeastOne(middleSize,knownMiddleSelected,middleDraws);
+      let allProbability = 0;
+      if (fixedNonSelectedCount===0) {
+        allProbability = exactAllSelected(middleSize,knownMiddleSelected,middleDraws);
+      }
+      rows += `<div class="prob-result-row"><span>いずれか1枚以上を引く</span><strong>${fmtPercent(anyProbability)}</strong></div>`;
+      rows += `<div class="prob-result-row"><span>引いたカードがすべて選択カード</span><strong>${fmtPercent(allProbability)}</strong></div>`;
     } else rows = '<div>カードを選択すると確率を表示します。</div>';
-    rows += `<div class="small">計算対象：山札 ${deckSize}枚 / ドロー ${k}枚</div>`;
+    rows += `<div class="small">計算対象：山札 ${deckSize}枚 / ドロー ${draws}枚。裏向きで引いたカードの正体は、表向きにするまで確率に反映しません。</div>`;
     probResults.innerHTML=rows;
   }
   function allCardSample(key) {
@@ -527,7 +530,7 @@ function makeId() {
   function drawOne(faceDown, fromBottom=false) {
     if (!deck.length) { alert('山札がありません。画像を追加して山札を作ってください。'); return; }
     const data = fromBottom ? deck.shift() : deck.pop();
-    const card = {id:nextId++, src:data.src, name:data.name, known:!faceDown || !!data.known, x:12+(cards.length%6)*65, y:12+(Math.floor(cards.length/6)%5)*84, facedown:!!faceDown, tapped:false, rotation:0, z:cards.length+1, el:null};
+    const card = {id:nextId++, src:data.src, name:data.name, known:!faceDown && (!!data.known || !data.known), unknown:!!faceDown, x:12+(cards.length%6)*65, y:12+(Math.floor(cards.length/6)%5)*84, facedown:!!faceDown, tapped:false, rotation:0, z:cards.length+1, el:null};
     card.x = Math.max(0, Math.min(card.x, board.clientWidth - 50));
     card.y = Math.max(0, Math.min(card.y, board.clientHeight - Math.min(84, board.clientHeight)));
     mountCard(card);
@@ -551,7 +554,7 @@ function makeId() {
   document.getElementById('shuffle').onclick = () => { if (deck.length > 1) saveUndo(); shuffleDeck(); setNormalShuffleButton(); };
   document.getElementById('flip').onclick = () => {
     const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
-    chosen.forEach(c => { c.facedown=!c.facedown; applyVisual(c); });
+    chosen.forEach(c => { c.facedown=!c.facedown; if (!c.facedown) c.unknown=false; applyVisual(c); });
   };
   document.getElementById('tapToggle').onclick = () => {
     const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
@@ -580,12 +583,12 @@ function makeId() {
   document.getElementById('topDeck').onclick = () => {
     const chosen=selectedCards(); if (chosen.length !== 1) { alert('山札の上へ送るカードを1枚だけ選択してね。'); return; }
     saveUndo();
-    const c=chosen[0]; deck.push({src:c.src,name:c.name,known:!!c.known,fixedTop:true,fixedBottom:false}); removeCard(c); selected.clear(); updateStatus(); refreshProbabilityUI();
+    const c=chosen[0]; deck.push({src:c.unknown ? null : c.src,name:c.unknown ? null : c.name,known:!c.unknown && !!c.known,fixedTop:true,fixedBottom:false}); removeCard(c); selected.clear(); updateStatus(); refreshProbabilityUI();
   };
   document.getElementById('bottomDeck').onclick = () => {
     const chosen=selectedCards(); if (chosen.length !== 1) { alert('山下へ送るカードを1枚だけ選択してね。'); return; }
     saveUndo();
-    const c=chosen[0]; deck.unshift({src:c.src,name:c.name,known:!!c.known,fixedBottom:true,fixedTop:false}); removeCard(c); selected.clear(); updateStatus(); refreshProbabilityUI();
+    const c=chosen[0]; deck.unshift({src:c.unknown ? null : c.src,name:c.unknown ? null : c.name,known:!c.unknown && !!c.known,fixedBottom:true,fixedTop:false}); removeCard(c); selected.clear(); updateStatus(); refreshProbabilityUI();
   };
   document.getElementById('shuffleToTop').onclick = () => shuffleSelectedIntoDeck(true);
   document.getElementById('shuffleToBottom').onclick = () => shuffleSelectedIntoDeck(false);
@@ -608,7 +611,7 @@ function makeId() {
   document.getElementById('clear').onclick = () => { selected.clear(); updateSelected(); };
   // Any other button action ends the special "start" state and restores the regular label.
   document.querySelectorAll('button:not(#shuffle)').forEach(button => {
-    button.addEventListener('click', setNormalShuffleButton);
+    button.addEventListener('click', () => { setNormalShuffleButton(); queueMicrotask(() => { if (typeof refreshProbabilityUI === 'function') refreshProbabilityUI(); }); });
   });
   // Suppress only double-tap zoom on the board; ordinary pinch zoom remains available.
   let lastTouchEnd = 0;
