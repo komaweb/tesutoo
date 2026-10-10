@@ -18,7 +18,7 @@ header { padding:10px 12px; background:#20232a; border-bottom:1px solid var(--li
 .nav-link-button { display:inline-flex; align-items:center; text-decoration:none; }
 h1 { font-size:18px; margin:0; }
 .hint { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.5; }
-#board { position:relative; width:min(100%, 62vh); max-width:100vw; aspect-ratio:3 / 4; height:auto; min-height:0; max-height:78vh; margin:0 auto; overflow:hidden; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
+#board { position:relative; width:min(100%, 62vh); max-width:100vw; aspect-ratio:4 / 3; height:auto; min-height:0; max-height:78vh; margin:0 auto; overflow:hidden; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
 .card { width:clamp(50px, 9.9vw, 79px); aspect-ratio:2.5 / 3.5; position:absolute; left:0; top:0; margin:0; border-radius:5px; border:2px solid #596171; background:#111; overflow:hidden; box-shadow:0 3px 8px #0008; user-select:none; touch-action:none; cursor:grab; }
 .card img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; background:#111; }
 .card.selected { outline:3px solid #80a5ff; outline-offset:1px; }
@@ -47,16 +47,16 @@ input[type=file] { display:none; }
   html, body { width:100%; height:100%; overflow:hidden; }
   body { height:100dvh; min-height:0; }
   .board-header { position:absolute; top:0; left:0; width:calc(100% - 270px); height:48px; padding:6px 12px; z-index:5; }
-  #board { position:absolute; left:0; top:48px; bottom:0; width:auto; height:auto; max-width:none; max-height:none; aspect-ratio:3 / 4; margin:0; }
+  #board { position:absolute; left:0; top:48px; bottom:0; width:auto; height:auto; max-width:none; max-height:none; aspect-ratio:4 / 3; margin:0; }
   #controls { position:absolute; top:0; right:0; bottom:0; width:270px; overflow-y:auto; overscroll-behavior:contain; padding:8px; border-top:0; border-left:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
   .toolbar { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
-  .control-tile { aspect-ratio:1 / 1; }
+  .control-tile { aspect-ratio:auto; height:clamp(32px, calc((100vw - 300px) / 3 * .67), 58px); }
   .tile-label { font-size:clamp(6px, 1.1vw, 9px); }
   .control-footer { margin-top:auto; display:flex; flex-direction:column; align-items:stretch; gap:7px; }
   .prob-open { margin:0; width:100%; }
   #status { order:0; }
   .utility-buttons { order:1; width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
-  .utility-buttons .control-tile { width:100%; aspect-ratio:1 / 1; }
+  .utility-buttons .control-tile { width:100%; aspect-ratio:auto; height:clamp(32px, calc((100vw - 300px) / 9 * .67), 48px); }
   #probabilityPanel { position:absolute; left:0; top:48px; bottom:0; width:calc(100% - 270px); overflow:auto; z-index:8; margin:0; }
 }
 
@@ -137,7 +137,7 @@ button.control-tile:disabled { opacity:.45; }
   .control-footer .utility-buttons .control-tile { min-height:44px; aspect-ratio:1 / 1; flex-direction:column; justify-content:center; align-items:center; padding:2px; gap:2px; }
   .control-footer .utility-buttons .tile-icon { width:55%; max-width:20px; }
   .control-footer .utility-buttons .tile-label { text-align:center; white-space:nowrap; font-size:6px; }
-  #board { width:min(calc(100vw - 150px), calc((100dvh - 48px) * 0.75)); height:auto; aspect-ratio:3 / 4; max-width:calc(100vw - 150px); bottom:auto; }
+  #board { width:min(calc(100vw - 150px), calc((100dvh - 48px) * 0.75)); height:auto; aspect-ratio:4 / 3; max-width:calc(100vw - 150px); bottom:auto; }
   #probabilityPanel { width:calc(100% - 150px); }
 }
 
@@ -167,7 +167,7 @@ button.control-tile:disabled { opacity:.45; }
     flex:1 1 auto;
     width:auto;
     height:auto;
-    aspect-ratio:3 / 4;
+    aspect-ratio:4 / 3;
     min-height:150px;
     max-height:none;
     max-width:100vw;
@@ -182,6 +182,38 @@ button.control-tile:disabled { opacity:.45; }
   html, body { min-height:100%; height:auto; overflow-x:hidden; overflow-y:auto; }
   body { min-height:100dvh; }
   #controls { overflow-y:auto; }
+}
+
+
+/* Text-only square controls; keep labels fully inside each tile. */
+.control-tile:not(.utility) { flex-direction:column !important; align-items:center; justify-content:center; padding:4px 3px; gap:0; }
+.control-tile:not(.utility) .tile-label { display:flex; align-items:center; justify-content:center; flex-direction:column; width:100%; height:100%; white-space:normal; overflow-wrap:anywhere; word-break:keep-all; text-overflow:clip; font-size:clamp(9px, 2.2vw, 13px); line-height:1.22; letter-spacing:0; }
+.control-tile.shuffle-start .tile-label { font-size:clamp(8px, 1.9vw, 11px) !important; }
+.control-footer { display:grid !important; grid-template-columns:minmax(0,2fr) minmax(44px,1fr) minmax(0,3fr) !important; gap:5px; align-items:stretch; }
+.control-footer #openProbability { grid-column:1; width:100%; height:100%; min-height:0; aspect-ratio:auto; display:flex; align-items:center; justify-content:center; margin:0; padding:4px; font-size:clamp(10px,2.5vw,14px); line-height:1.2; }
+.control-footer #status { grid-column:2; display:flex; flex-direction:column; justify-content:center; text-align:center; font-size:clamp(8px,2vw,12px); line-height:1.3; }
+.control-footer .utility-buttons { grid-column:3; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; width:100%; }
+.control-footer .utility-buttons .control-tile { width:100%; aspect-ratio:1/1; padding:3px; }
+.control-footer .utility-buttons .tile-icon { width:40%; max-width:20px; }
+.control-footer .utility-buttons .tile-label { font-size:clamp(7px,1.65vw,10px); line-height:1.1; white-space:normal; }
+@media (orientation:landscape) and (min-width:600px) {
+  #board { aspect-ratio:4 / 3 !important; width:min(calc(100vw - 150px), calc((100dvh - 48px) * 4 / 3)) !important; height:auto !important; bottom:auto !important; }
+  .control-tile:not(.utility) .tile-label { font-size:clamp(11px,1.1vw,14px); }
+  .control-footer { display:grid !important; grid-template-columns:minmax(0,2fr) minmax(40px,1fr) minmax(0,3fr) !important; margin-top:auto; }
+  .control-footer #openProbability { width:100%; font-size:11px; }
+  .control-footer #status { font-size:10px; }
+  .control-footer .utility-buttons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+
+
+/* Shorter control tiles: approximately two-thirds of the previous square height. */
+@media (orientation:portrait) {
+  .toolbar .control-tile { aspect-ratio:auto !important; height:clamp(34px, calc((100vw - 48px) / 6 * .67), 58px); }
+  .control-footer .utility-buttons .control-tile { aspect-ratio:auto !important; height:clamp(34px, calc((100vw - 48px) / 18 * .67), 46px); }
+}
+@media (orientation:landscape) and (min-width:600px) {
+  .toolbar .control-tile { aspect-ratio:auto !important; height:clamp(32px, calc((100dvh - 100px) / 6 * .67), 54px); }
+  .control-footer .utility-buttons .control-tile { aspect-ratio:auto !important; height:clamp(30px, calc((100vw - 300px) / 9 * .67), 42px); }
 }
 
 </style>
@@ -230,21 +262,21 @@ button.control-tile:disabled { opacity:.45; }
 <section id="controls">
   <div class="toolbar">
     <input id="images" type="file" accept="image/*" multiple>
-    <button id="shuffle" class="control-tile shuffle-start" aria-label="山札シャッフル"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="m16 6 5-3"/></g></svg></span><span class="tile-label">山札シャッフル</span></button>
-    <button id="draw" class="control-tile " aria-label="ドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></g></svg></span><span class="tile-label">ドロー</span></button>
-    <button id="drawDown" class="control-tile " aria-label="裏向きドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 8 8 8m0-5v5h-5"/></g></svg></span><span class="tile-label">裏向きドロー</span></button>
-    <button id="drawBottom" class="control-tile " aria-label="山下からドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/><path d="M8 5H5v3"/></g></svg></span><span class="tile-label">山下からドロー</span></button>
-    <button id="drawBottomDown" class="control-tile " aria-label="山下から裏向きドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 8 8 8m0-5v5h-5"/><path d="M8 5H5v3"/></g></svg></span><span class="tile-label">山下から裏向きドロー</span></button>
-    <button id="flip" class="control-tile " aria-label="裏返す"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7l8 4 8-4-8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></g></svg></span><span class="tile-label">裏返す</span></button>
-    <button id="tapToggle" class="control-tile " aria-label="横向き/縦向き"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 12h3m12 0h3"/></g></svg></span><span class="tile-label">横向き/縦向き</span></button>
-    <button id="rotate90" class="control-tile " aria-label="90度回転"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0 2 5"/><path d="M20 4v7h-7"/></g></svg></span><span class="tile-label">90度回転</span></button>
-    <button id="topDeck" class="control-tile " aria-label="山上へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16"/><path d="m8 4 4-3 4 3"/><path d="M12 2v12"/><path d="M5 12v9h14v-9"/></g></svg></span><span class="tile-label">山上へ</span></button>
-    <button id="bottomDeck" class="control-tile " aria-label="山下へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16h16"/><path d="m8 20 4 3 4-3"/><path d="M12 22V10"/><path d="M5 3v9h14V3"/></g></svg></span><span class="tile-label">山下へ</span></button>
-    <button id="shuffleToTop" class="control-tile " aria-label="シャッフルして山上へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="M12 2v7"/><path d="m9 6 3 3 3-3"/></g></svg></span><span class="tile-label">シャッフルして山上へ</span></button>
-    <button id="shuffleToBottom" class="control-tile " aria-label="シャッフルして山下へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="M12 15v7"/><path d="m9 19 3 3 3-3"/></g></svg></span><span class="tile-label">シャッフルして山下へ</span></button>
+    <button id="shuffle" class="control-tile shuffle-start" aria-label="山札シャッフル"><span class="tile-label">山札<br>シャッフル</span></button>
+    <button id="draw" class="control-tile " aria-label="ドロー"><span class="tile-label">ドロー</span></button>
+    <button id="drawDown" class="control-tile " aria-label="裏向きドロー"><span class="tile-label">裏ドロー</span></button>
+    <button id="drawBottom" class="control-tile " aria-label="山下からドロー"><span class="tile-label">山下<br>ドロー</span></button>
+    <button id="drawBottomDown" class="control-tile " aria-label="山下から裏向きドロー"><span class="tile-label">山下<br>裏ドロー</span></button>
+    <button id="flip" class="control-tile " aria-label="裏返す"><span class="tile-label">ひっくり返す</span></button>
+    <button id="tapToggle" class="control-tile " aria-label="横向き/縦向き"><span class="tile-label">横向き／縦向き</span></button>
+    <button id="rotate90" class="control-tile " aria-label="90度回転"><span class="tile-label">90度回転</span></button>
+    <button id="topDeck" class="control-tile " aria-label="山上へ"><span class="tile-label">山上へ</span></button>
+    <button id="bottomDeck" class="control-tile " aria-label="山下へ"><span class="tile-label">山下へ</span></button>
+    <button id="shuffleToTop" class="control-tile " aria-label="シャッフルして山上へ"><span class="tile-label">シャッフルして<br>山上へ</span></button>
+    <button id="shuffleToBottom" class="control-tile " aria-label="シャッフルして山下へ"><span class="tile-label">シャッフルして<br>山下へ</span></button>
   </div>
   <div class="control-footer">
-    <button id="openProbability" class="prob-open" type="button">確率計算・山固定</button>
+    <button id="openProbability" class="prob-open" type="button">確率計算・固定確認</button>
     <div id="status">山札 0枚<br>選択 0枚</div>
     <div class="utility-buttons">
       <button id="undo" class="control-tile utility" aria-label="取り消し"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-2"/></g></svg></span><span class="tile-label">取り消し</span></button>
@@ -789,33 +821,57 @@ function makeId() {
     if (visualPrefs.background) { board.style.backgroundImage = `url("${visualPrefs.background}")`; board.style.backgroundSize = '100% 100%'; board.style.backgroundPosition = 'center'; }
     if (visualPrefs.cardBack) document.documentElement.style.setProperty('--custom-card-back', `url("${visualPrefs.cardBack}")`);
   } catch {}
+  function makePlayingCardSvg(rank, suit, joker=false) {
+    const red = suit === '♥' || suit === '♦' || joker;
+    const color = red ? '#c92735' : '#20242b';
+    const safeRank = String(rank).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const title = joker ? 'JOKER' : `${rank}${suit}`;
+    const center = joker ? `<text x="150" y="250" text-anchor="middle" font-family="Georgia,serif" font-size="72" font-weight="bold" fill="${color}">JOKER</text><text x="150" y="315" text-anchor="middle" font-size="56" fill="${color}">★</text>` : `<text x="150" y="230" text-anchor="middle" font-family="Georgia,serif" font-size="100" fill="${color}">${suit}</text><text x="150" y="320" text-anchor="middle" font-family="Georgia,serif" font-size="40" fill="${color}">${safeRank}</text>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="24" y="48" font-family="Georgia,serif" font-size="34" font-weight="bold" fill="${color}">${joker ? '★' : safeRank}</text><text x="24" y="79" font-family="Georgia,serif" font-size="28" fill="${color}">${joker ? '' : suit}</text><g transform="translate(0 0)">${center}</g><g transform="rotate(180 150 210)"><text x="24" y="48" font-family="Georgia,serif" font-size="34" font-weight="bold" fill="${color}">${joker ? '★' : safeRank}</text><text x="24" y="79" font-family="Georgia,serif" font-size="28" fill="${color}">${joker ? '' : suit}</text></g></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  function makeDefaultPlayingDeck() {
+    const cards = [];
+    const suits = ['♠','♥','♦','♣'];
+    const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    for (const suit of suits) for (const rank of ranks) cards.push({src:makePlayingCardSvg(rank,suit), name:`${rank}${suit}`, count:1});
+    cards.push({src:makePlayingCardSvg('JOKER','',true), name:'ジョーカー', count:1});
+    return {id:'__default_playing_cards__', name:'トランプ(デッキ管理ボタンからデッキを追加できます)', cards};
+  }
+  function loadDeckForBoard(savedDeck) {
+    document.getElementById('currentDeckName').textContent = savedDeck.name;
+    const deckCards = [];
+    (savedDeck.cards || []).forEach(item => {
+      const count = Math.max(0, Number(item.count) || 0);
+      for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name, known:false, fixedTop:false, fixedBottom:false});
+    });
+    deck = deckCards;
+    originalCounts = new Map();
+    deckCards.forEach(item => originalCounts.set(item.src, (originalCounts.get(item.src)||0)+1));
+    originalTotal = deckCards.length;
+    setStartShuffleButton();
+    updateStatus();
+  }
   const params = new URLSearchParams(location.search);
   const selectedDeckId = params.get('deck');
-  if (selectedDeckId) {
-    try {
+  try {
+    if (selectedDeckId) {
       const savedDeck = await getDeck(selectedDeckId);
-      if (savedDeck) {
-        document.getElementById('currentDeckName').textContent = savedDeck.name;
-        const deckCards = [];
-        (savedDeck.cards || []).forEach(item => {
-          const count = Math.max(0, Number(item.count) || 0);
-          for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name, known:false, fixedTop:false, fixedBottom:false});
-        });
-        deck = deckCards;
-        originalCounts = new Map();
-        deckCards.forEach(item => originalCounts.set(item.src, (originalCounts.get(item.src)||0)+1));
-        originalTotal = deckCards.length;
-        setStartShuffleButton();
-        updateStatus();
-      } else {
-        document.getElementById('empty').textContent = 'デッキが見つかりません。デッキ管理から選び直してください。';
+      if (savedDeck) loadDeckForBoard(savedDeck);
+      else {
+        const savedDecks = await getAllDecks();
+        if (savedDecks.length) loadDeckForBoard(savedDecks[0]);
+        else loadDeckForBoard(makeDefaultPlayingDeck());
       }
-    } catch (err) {
-      document.getElementById('empty').textContent = '保存データを読み込めませんでした。デッキ管理から確認してください。';
+    } else {
+      const savedDecks = await getAllDecks();
+      if (savedDecks.length) loadDeckForBoard(savedDecks[0]);
+      else loadDeckForBoard(makeDefaultPlayingDeck());
     }
-  } else {
-    document.getElementById('empty').innerHTML = 'デッキを選択したら、<span class="start-hint">「シャッフルしてひとり回しを始める」を押してください。</span><p>シャッフルせずにドローすると、デッキリストの右下から順にカードを引きます。</p>';
+  } catch (err) {
+    loadDeckForBoard(makeDefaultPlayingDeck());
   }
+  document.getElementById('empty').innerHTML = '<p>シャッフルせずにドローすると、デッキリストの右下から順にカードを引きます。</p>';
   updateStatus();
   refreshProbabilityUI();
 })();
