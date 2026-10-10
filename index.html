@@ -371,7 +371,7 @@ function makeId() {
       return;
     }
     saveUndo();
-    const group = chosen.map(c => ({src:c.unknown ? null : c.src, name:c.unknown ? null : c.name, known:!c.unknown && !!c.known, fixedTop:!!toTop, fixedBottom:!toTop}));
+    const group = chosen.map(c => ({src:c.src, name:c.name, known:!c.unknown && !!c.known, fixedTop:!!toTop, fixedBottom:!toTop}));
     for (let i = group.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [group[i], group[j]] = [group[j], group[i]];
