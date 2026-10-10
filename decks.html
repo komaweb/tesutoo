@@ -70,7 +70,7 @@ input[type=file] { display:none; }
 
 
 .visual-settings { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:14px; }
-.visual-preview { width:100%; aspect-ratio:3/4; max-height:280px; border:1px solid #555d6d; border-radius:10px; background:#1b1e24; background-size:cover; background-position:center; overflow:hidden; position:relative; }
+.visual-preview { width:100%; aspect-ratio:3/4; max-height:none; border:1px solid #555d6d; border-radius:10px; background:#1b1e24; background-size:100% 100%; background-position:center; overflow:hidden; position:relative; min-height:240px; }
 .visual-preview::after { content:"盤面プレビュー"; position:absolute; left:8px; top:8px; padding:4px 7px; border-radius:5px; background:#0009; color:white; font-size:11px; }
 .back-preview { width:82px; aspect-ratio:5/7; border:4px double #c5d2f2; border-radius:7px; background:radial-gradient(ellipse at center,#364d88 0 13%,transparent 14%),repeating-linear-gradient(45deg,#1c2b50 0 5px,#334b7b 5px 10px); background-size:cover; background-position:center; }
 .visual-settings .small { display:block; line-height:1.5; }
@@ -246,6 +246,8 @@ function saveVisualPrefs(prefs) { localStorage.setItem(VISUAL_PREFS_KEY, JSON.st
 function updateVisualPreviews() {
   const prefs = readVisualPrefs();
   bgPreview.style.backgroundImage = prefs.background ? `url("${prefs.background}")` : `url("${presetBackground('blue')}")`;
+  bgPreview.style.backgroundSize = '100% 100%';
+  bgPreview.style.backgroundSize = '100% 100%';
   backPreview.style.backgroundImage = prefs.cardBack ? `url("${prefs.cardBack}")` : `url("${presetBack('blue')}")`;
 }
 async function loadVisualFile(input, key) {

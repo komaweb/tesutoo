@@ -44,27 +44,26 @@ input[type=file] { display:none; }
 #status { color:var(--muted); font-size:12px; margin-top:9px; line-height:1.5; }
 @media (min-width:800px) { #board { width:min(100%, 62vh); max-height:78vh; } .card { width:79px; } }
 @media (orientation:landscape) and (min-width:600px) {
-  body { height:100dvh; overflow:hidden; }
+  html, body { width:100%; height:100%; overflow:hidden; }
+  body { height:100dvh; min-height:0; }
   .board-header { position:absolute; top:0; left:0; width:calc(100% - 270px); height:48px; padding:6px 12px; z-index:5; }
-  #board { position:absolute; left:0; top:48px; width:min(calc(100vw - 270px), calc((100dvh - 48px) * 3 / 4)); height:auto; max-width:calc(100vw - 270px); max-height:none; aspect-ratio:3 / 4; margin:0; }
-  #controls { position:absolute; top:0; right:0; bottom:0; width:270px; overflow-y:auto; padding:8px; border-top:0; border-left:1px solid var(--line); }
+  #board { position:absolute; left:0; top:48px; bottom:0; width:auto; height:auto; max-width:none; max-height:none; aspect-ratio:3 / 4; margin:0; }
+  #controls { position:absolute; top:0; right:0; bottom:0; width:270px; overflow-y:auto; overscroll-behavior:contain; padding:8px; border-top:0; border-left:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
   .toolbar { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
   .control-tile { aspect-ratio:1 / 1; }
   .tile-label { font-size:clamp(6px, 1.1vw, 9px); }
-  .prob-open { margin-top:0; }
-  .control-footer { display:flex; flex-direction:column; align-items:stretch; gap:8px; }
-  #status { flex:none; }
-  .utility-buttons { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
-  .control-footer #status { order:0; }
-  .utility-buttons .control-tile { width:100%; }
-  #probabilityPanel { position:absolute; left:0; top:48px; bottom:0; width:calc(100vw - 270px); overflow:auto; z-index:8; margin:0; }
+  .control-footer { margin-top:auto; display:flex; flex-direction:column; align-items:stretch; gap:7px; }
+  .prob-open { margin:0; width:100%; }
+  #status { order:0; }
+  .utility-buttons { order:1; width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+  .utility-buttons .control-tile { width:100%; aspect-ratio:1 / 1; }
+  #probabilityPanel { position:absolute; left:0; top:48px; bottom:0; width:calc(100% - 270px); overflow:auto; z-index:8; margin:0; }
 }
 
 
 
-
-
-.toolbar, .utility-buttons { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px 5px; align-items:start; }
+.toolbar { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px 5px; align-items:start; }
+.utility-buttons { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; align-items:start; }
 .control-tile { min-width:0; width:100%; aspect-ratio:1 / 1; padding:4px; border:1px solid #555d6d; border-radius:9px; background:#303642; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; overflow:hidden; color:var(--text); }
 .control-tile:active { background:#454d5c; }
 .tile-icon { flex:0 0 auto; width:48%; max-width:29px; aspect-ratio:1 / 1; display:flex; align-items:center; justify-content:center; color:var(--text); }
@@ -74,12 +73,15 @@ button.control-tile.shuffle-start { background:#258447; border-color:#48b96e; co
 button.control-tile.shuffle-start .tile-label { color:#ffffff; font-weight:600; font-size:clamp(5px, 1.35vw, 8px); }
 button.control-tile.utility { background:#c87522; border-color:#f0a24d; color:#fff; }
 button.control-tile:disabled { opacity:.45; }
-.control-footer { align-items:center; flex-wrap:wrap; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(90px,.8fr); gap:8px; }
-.control-footer #status { grid-column:1 / -1; }
-.control-footer .utility-buttons { grid-column:1 / -1; width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); }
-.control-footer .utility-buttons .control-tile { aspect-ratio:1 / 1; }
-#status { flex:1 1 120px; }
-.utility-buttons { flex:0 0 auto; grid-template-columns:repeat(3,minmax(0,1fr)); width:min(100%,330px); }
+.control-footer { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(54px,.55fr) minmax(0,1.3fr); align-items:center; gap:6px; margin-top:8px; }
+.control-footer #openProbability { grid-column:1; }
+.control-footer #status { grid-column:2; margin:0; text-align:center; font-size:clamp(8px,2.2vw,12px); line-height:1.4; overflow-wrap:anywhere; }
+.control-footer .utility-buttons { grid-column:3; width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; }
+.control-footer .utility-buttons .control-tile { aspect-ratio:1 / 1; padding:2px; gap:2px; }
+.control-footer .utility-buttons .tile-icon { width:40%; max-width:20px; }
+.control-footer .utility-buttons .tile-label { font-size:clamp(5px,1.45vw,8px); letter-spacing:-.06em; }
+.prob-open { min-width:0; margin:0; padding:8px 4px; font-size:clamp(9px,2.4vw,13px); line-height:1.25; }
+#status { min-width:0; }
 
 
 .prob-open { display:block; width:100%; margin:10px 0 0; padding:12px; background:#303642; border-color:#555d6d; }
@@ -119,6 +121,41 @@ button.control-tile:disabled { opacity:.45; }
 .fixed-card img { width:29px; aspect-ratio:5/7; object-fit:contain; border-radius:3px; background:#111; }
 .fixed-unknown { width:29px; aspect-ratio:5/7; display:flex; align-items:center; justify-content:center; border:1px solid #777; border-radius:3px; font-size:14px; }
 @media(max-width:650px) { .prob-layout { grid-template-columns:1fr; } .fixed-order { order:2; } .prob-card-choices { grid-template-columns:repeat(auto-fill,minmax(66px,1fr)); } }
+
+
+@media (orientation:landscape) and (min-width:600px) {
+  .board-header { width:calc(100% - 150px); }
+  #controls { width:150px; }
+  .toolbar { grid-template-columns:1fr; gap:5px; }
+  .control-tile { aspect-ratio:auto; min-height:42px; flex-direction:row; justify-content:flex-start; gap:7px; padding:5px 7px; }
+  .tile-icon { width:24px; max-width:24px; }
+  .tile-label { text-align:left; white-space:normal; overflow-wrap:anywhere; font-size:9px; letter-spacing:-.03em; }
+  .control-footer { display:flex; flex-direction:column; align-items:stretch; gap:7px; }
+  .control-footer #openProbability { width:100%; font-size:11px; }
+  .control-footer #status { text-align:center; font-size:11px; }
+  .control-footer .utility-buttons { width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .control-footer .utility-buttons .control-tile { min-height:44px; aspect-ratio:1 / 1; flex-direction:column; justify-content:center; align-items:center; padding:2px; gap:2px; }
+  .control-footer .utility-buttons .tile-icon { width:55%; max-width:20px; }
+  .control-footer .utility-buttons .tile-label { text-align:center; white-space:nowrap; font-size:6px; }
+  #board { width:min(calc(100vw - 150px), calc((100dvh - 48px) * 0.75)); height:auto; aspect-ratio:3 / 4; max-width:calc(100vw - 150px); bottom:auto; }
+  #probabilityPanel { width:calc(100% - 150px); }
+}
+
+
+/* Final layout corrections: the three footer groups stay on one row in portrait. */
+.control-footer { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(48px,.6fr) minmax(0,1.25fr); gap:5px; align-items:center; }
+.control-footer #openProbability { grid-column:1; margin:0; width:100%; padding:8px 3px; font-size:clamp(9px,2.3vw,13px); }
+.control-footer #status { grid-column:2; margin:0; text-align:center; line-height:1.3; font-size:clamp(8px,2vw,12px); }
+.control-footer .utility-buttons { grid-column:3; width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; }
+.control-footer .utility-buttons .control-tile { width:100%; min-width:0; aspect-ratio:1 / 1; padding:2px; gap:2px; }
+.control-footer .utility-buttons .tile-icon { width:42%; max-width:20px; }
+.control-footer .utility-buttons .tile-label { font-size:clamp(5px,1.4vw,8px); letter-spacing:-.07em; }
+@media (orientation:landscape) and (min-width:600px) {
+  .control-footer { display:flex; flex-direction:column; align-items:stretch; gap:7px; margin-top:auto; }
+  .control-footer #openProbability { width:100%; margin:0; font-size:11px; }
+  .control-footer #status { text-align:center; font-size:11px; }
+  .control-footer .utility-buttons { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
 
 </style>
 </head>
@@ -179,9 +216,9 @@ button.control-tile:disabled { opacity:.45; }
     <button id="shuffleToTop" class="control-tile " aria-label="シャッフルして山上へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="M12 2v7"/><path d="m9 6 3 3 3-3"/></g></svg></span><span class="tile-label">シャッフルして山上へ</span></button>
     <button id="shuffleToBottom" class="control-tile " aria-label="シャッフルして山下へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="M12 15v7"/><path d="m9 19 3 3 3-3"/></g></svg></span><span class="tile-label">シャッフルして山下へ</span></button>
   </div>
-  <button id="openProbability" class="prob-open" type="button">確率計算・山固定</button>
   <div class="control-footer">
-    <div id="status">山札 0枚 / 選択 0枚</div>
+    <button id="openProbability" class="prob-open" type="button">確率計算・山固定</button>
+    <div id="status">山札 0枚<br>選択 0枚</div>
     <div class="utility-buttons">
       <button id="undo" class="control-tile utility" aria-label="取り消し"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-2"/></g></svg></span><span class="tile-label">取り消し</span></button>
       <button id="redo" class="control-tile utility" aria-label="やり直し" disabled><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0 0 14h2"/></g></svg></span><span class="tile-label">やり直し</span></button>
@@ -722,7 +759,7 @@ function makeId() {
   // Global visual preferences are shared by all decks in this browser.
   try {
     const visualPrefs = JSON.parse(localStorage.getItem('soloCardBoardVisualPrefs') || '{}');
-    if (visualPrefs.background) { board.style.backgroundImage = `url("${visualPrefs.background}")`; board.style.backgroundSize = 'cover'; board.style.backgroundPosition = 'center'; }
+    if (visualPrefs.background) { board.style.backgroundImage = `url("${visualPrefs.background}")`; board.style.backgroundSize = '100% 100%'; board.style.backgroundPosition = 'center'; }
     if (visualPrefs.cardBack) document.documentElement.style.setProperty('--custom-card-back', `url("${visualPrefs.cardBack}")`);
   } catch {}
   const params = new URLSearchParams(location.search);
