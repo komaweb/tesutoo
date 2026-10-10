@@ -217,6 +217,9 @@ function makeId() {
   const empty = document.getElementById('empty');
   let cards = [];
   let deck = []; // array start = bottom, array end = top
+  // Known deck-list composition. Card positions are not assumed known merely because the list is known.
+  let originalCounts = new Map();
+  let originalTotal = 0;
   let selected = new Set();
   let nextId = 1;
   let drag = null;
@@ -387,14 +390,6 @@ function makeId() {
 
 
   function cardKey(card) { return card && card.src ? card.src : '__unknown__'; }
-  function deckTargetCounts() {
-    const counts = new Map();
-    deck.forEach(item => {
-      const key = item.known && item.src ? item.src : '__unknown__';
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    return counts;
-  }
   function fixedTopCount() {
     let count = 0;
     for (let i=deck.length-1; i>=0 && deck[i].fixedTop; i--) count++;
@@ -407,8 +402,8 @@ function makeId() {
   }
   function fmtPercent(p) { return (Math.max(0,Math.min(1,p))*100).toLocaleString('ja-JP',{maximumFractionDigits:2}) + '%'; }
   function choose(n,k) {
-    if (k<0 || k>n) return 0;
-    if (k===0 || k===n) return 1;
+    if (k<0 || k>n || n<0) return 0;
+    if (k===0) return 1;
     k=Math.min(k,n-k);
     let out=1;
     for(let i=1;i<=k;i++) out=out*(n-k+i)/i;
@@ -448,11 +443,11 @@ function makeId() {
 
   function renderProbabilityChoices() {
     const all = new Map();
-    // Only cards whose identity is publicly known can be selected as named targets.
-    deck.forEach(item => { if (item.known && item.src && !all.has(item.src)) all.set(item.src, item); });
+    // The deck list is known to its owner even when individual card positions are not.
+    deck.forEach(item => { if (item.src && !all.has(item.src)) all.set(item.src, item); });
     cards.forEach(item => { if (!item.unknown && item.src && !all.has(item.src)) all.set(item.src, item); });
     probChoices.innerHTML = '';
-    if (!all.size) { probChoices.textContent='正体が分かっているカードがありません。'; return; }
+    if (!all.size) { probChoices.textContent='デッキリストがありません。'; return; }
     all.forEach((item,key) => {
       const b = document.createElement('button');
       b.type='button'; b.className='prob-choice' + (chosenProbabilityCards.has(key) ? ' selected':'');
@@ -466,53 +461,77 @@ function makeId() {
       probChoices.appendChild(b);
     });
   }
+  // Counts cards that are definitely known to be outside the random, unrevealed pool.
+  function knownOutsidePoolCounts() {
+    const counts = new Map();
+    cards.forEach(c => {
+      if (!c.unknown && c.src) counts.set(c.src, (counts.get(c.src)||0)+1);
+    });
+    deck.forEach(d => {
+      if (d.known && d.src && (d.fixedTop || d.fixedBottom)) counts.set(d.src, (counts.get(d.src)||0)+1);
+    });
+    return counts;
+  }
   function calculateProbability() {
-    const n = Math.max(1, Number(document.getElementById('drawCount').value)||1);
+    const requested = Math.max(1, Number(document.getElementById('drawCount').value)||1);
     const deckSize = deck.length;
     if (!deckSize) { probResults.textContent='山札がありません。'; return; }
     const selectedKeys = [...chosenProbabilityCards];
-    const isSelected = item => !!(item && item.known && item.src && selectedKeys.includes(item.src));
     const topN = fixedTopCount(), bottomN = fixedBottomCount();
     const fixedTop = deck.slice(deckSize-topN).reverse();
     const fixedBottom = deck.slice(0,bottomN);
     const middle = deck.slice(bottomN, deckSize-topN);
-    const draws = Math.min(n,deckSize);
+    const draws = Math.min(requested,deckSize);
     const drawnTop = fixedTop.slice(0,draws);
-    const remainingAfterTop = Math.max(0,draws-drawnTop.length);
-    const drawnBottomCount = Math.max(0,remainingAfterTop-middle.length);
-    const drawnBottom = fixedBottom.slice(0,drawnBottomCount);
+    const afterTop = Math.max(0,draws-drawnTop.length);
+    const middleDraws = Math.min(afterTop,middle.length);
+    const bottomDraws = Math.max(0,afterTop-middle.length);
+    const drawnBottom = fixedBottom.slice(0,bottomDraws);
     const fixedDrawn = [...drawnTop,...drawnBottom];
-    const middleDraws = Math.min(remainingAfterTop,middle.length);
-    const middleSize = middle.length;
-    const knownMiddleSelected = middle.filter(isSelected).length;
-    const fixedSelectedCount = fixedDrawn.filter(isSelected).length;
+    const selected = item => !!(item && item.known && item.src && selectedKeys.includes(item.src));
+    const topSelected = drawnTop.filter(selected).length;
+    const bottomSelected = drawnBottom.filter(selected).length;
+    const fixedSelectedCount = topSelected + bottomSelected;
     const fixedNonSelectedCount = fixedDrawn.length-fixedSelectedCount;
-    const unknownCount = itemCount => itemCount.filter(item=>!(item && item.known && item.src)).length;
+
+    // The identities of face-down cards in play are deliberately ignored. They remain part of
+    // the unknown-card pool, so their actual src values cannot leak into the result.
+    const hiddenOnBoard = cards.filter(c => c.unknown).length;
+    const knownOut = knownOutsidePoolCounts();
+    const fixedKnown = deck.filter(d => d.known && (d.fixedTop || d.fixedBottom));
+    const randomPoolSize = middle.length + hiddenOnBoard;
+    const randomCounts = new Map();
+    originalCounts.forEach((total,key) => {
+      const out = (knownOut.get(key)||0) + fixedKnown.filter(d=>d.src===key).length;
+      randomCounts.set(key, Math.max(0,total-out));
+    });
+    // Unknown cards already placed on the board are unobserved samples from this pool. Use the
+    // original composition as the prior rather than inspecting their hidden identities.
+    const priorSize = Math.max(0, originalTotal - [...knownOut.values()].reduce((a,b)=>a+b,0) - fixedKnown.length);
+    const effectivePool = Math.max(randomPoolSize, priorSize);
+    const totalSelected = selectedKeys.reduce((sum,key)=>sum+(randomCounts.get(key)||0),0);
+    const middleFraction = effectivePool ? middleDraws/effectivePool : 0;
     let rows = '';
     selectedKeys.forEach(key => {
       const sample = allCardSample(key);
-      const count = deck.filter(item=>item.known && item.src===key).length;
-      const topHas = drawnTop.some(item=>item.known && item.src===key);
-      let probability;
-      if (topHas) probability=1;
-      else {
-        const targetInMiddle=middle.filter(item=>item.known && item.src===key).length;
-        probability=hypergeomAtLeastOne(middleSize,targetInMiddle,middleDraws);
-        if (!probability && drawnBottom.some(item=>item.known && item.src===key)) probability=1;
+      const knownFixedTop = drawnTop.some(item=>item.known && item.src===key);
+      const knownFixedBottom = drawnBottom.some(item=>item.known && item.src===key);
+      let probability = (knownFixedTop || knownFixedBottom) ? 1 : 0;
+      if (!probability && middleDraws>0 && effectivePool>0) {
+        const hit = randomCounts.get(key)||0;
+        probability = hypergeomAtLeastOne(effectivePool, hit, middleDraws);
       }
       const img = sample ? `<img src="${sample.src}" alt="">` : '';
-      rows += `<div class="prob-result-row"><div class="prob-result-name">${img}<span>このカード（山札内 ${count}枚）</span></div><strong>${fmtPercent(probability)}</strong></div>`;
+      rows += `<div class="prob-result-row"><div class="prob-result-name">${img}<span>このカード（デッキ採用 ${originalCounts.get(key)||0}枚）</span></div><strong>${fmtPercent(probability)}</strong></div>`;
     });
     if (selectedKeys.length) {
-      const anyProbability = fixedSelectedCount > 0 ? 1 : hypergeomAtLeastOne(middleSize,knownMiddleSelected,middleDraws);
+      let anyProbability = fixedSelectedCount>0 ? 1 : hypergeomAtLeastOne(effectivePool,totalSelected,middleDraws);
       let allProbability = 0;
-      if (fixedNonSelectedCount===0) {
-        allProbability = exactAllSelected(middleSize,knownMiddleSelected,middleDraws);
-      }
+      if (fixedNonSelectedCount===0) allProbability = exactAllSelected(effectivePool,totalSelected,middleDraws);
       rows += `<div class="prob-result-row"><span>いずれか1枚以上を引く</span><strong>${fmtPercent(anyProbability)}</strong></div>`;
       rows += `<div class="prob-result-row"><span>引いたカードがすべて選択カード</span><strong>${fmtPercent(allProbability)}</strong></div>`;
     } else rows = '<div>カードを選択すると確率を表示します。</div>';
-    rows += `<div class="small">計算対象：山札 ${deckSize}枚 / ドロー ${draws}枚。裏向きで引いたカードの正体は、表向きにするまで確率に反映しません。</div>`;
+    rows += `<div class="small">計算対象：山札 ${deckSize}枚 / ドロー ${draws}枚。場の裏向きカード ${hiddenOnBoard}枚は正体を参照せず、未知のカードとして計算します。</div>`;
     probResults.innerHTML=rows;
   }
   function allCardSample(key) {
@@ -541,6 +560,7 @@ function makeId() {
     selected.add(card.id);
     updateSelected();
     updateStatus();
+    refreshProbabilityUI();
   }
   // Decks are created and saved on the separate deck-management page.
   fileInput.addEventListener('change', () => {
@@ -555,6 +575,7 @@ function makeId() {
   document.getElementById('flip').onclick = () => {
     const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
     chosen.forEach(c => { c.facedown=!c.facedown; if (!c.facedown) c.unknown=false; applyVisual(c); });
+    refreshProbabilityUI();
   };
   document.getElementById('tapToggle').onclick = () => {
     const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
@@ -607,6 +628,7 @@ function makeId() {
     });
     updateSelected();
     updateStatus();
+    refreshProbabilityUI();
   };
   document.getElementById('clear').onclick = () => { selected.clear(); updateSelected(); };
   // Any other button action ends the special "start" state and restores the regular label.
@@ -634,6 +656,9 @@ function makeId() {
           for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name, known:false, fixedTop:false, fixedBottom:false});
         });
         deck = deckCards;
+        originalCounts = new Map();
+        deckCards.forEach(item => originalCounts.set(item.src, (originalCounts.get(item.src)||0)+1));
+        originalTotal = deckCards.length;
         setStartShuffleButton();
         updateStatus();
       } else {
