@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>1人回しカード盤</title>
+<style>
+:root { --bg:#17191e; --panel:#242832; --line:#414754; --text:#f3f4f6; --muted:#b8bfcc; }
+* { box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+html, body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-text-size-adjust:100%; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+body { touch-action:manipulation; }
+header { padding:10px 12px; background:#20232a; border-bottom:1px solid var(--line); }
+.board-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.board-heading strong { font-size:15px; font-weight:600; }
+.nav-link { color:#dce4ff; text-decoration:none; }
+.nav-link-button { display:inline-flex; align-items:center; text-decoration:none; }
+h1 { font-size:18px; margin:0; }
+.hint { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.5; }
+#board { position:relative; height:62vh; min-height:360px; overflow:auto; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:none; }
+.card { width:clamp(50px, 9.9vw, 79px); aspect-ratio:2.5 / 3.5; position:absolute; left:0; top:0; margin:0; border-radius:5px; border:2px solid #596171; background:#111; overflow:hidden; box-shadow:0 3px 8px #0008; user-select:none; touch-action:none; cursor:grab; }
+.card img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; background:#111; }
+.card.selected { outline:3px solid #80a5ff; outline-offset:1px; }
+.card.tapped { transform-origin:center; }
+.card.facedown img { display:none; }
+.card.facedown { background:radial-gradient(ellipse at center,#364d88 0 13%,transparent 14%),repeating-linear-gradient(45deg,#1c2b50 0 5px,#334b7b 5px 10px); border:4px double #c5d2f2; }
+.card.facedown::before { content:""; position:absolute; inset:5px; border:1px solid #c5d2f2; border-radius:4px; }
+.card.facedown::after { content:""; position:absolute; inset:10px; border:1px solid #91a7db; border-radius:50%; }
+.card .tag { position:absolute; left:2px; bottom:2px; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:1px 3px; border-radius:3px; background:#000b; font-size:9px; pointer-events:none; }
+#empty { position:absolute; left:12px; top:12px; right:12px; color:var(--muted); font-size:14px; line-height:1.7; pointer-events:none; }
+#controls { padding:12px; background:#20232a; border-top:1px solid var(--line); }
+.toolbar { display:flex; flex-wrap:wrap; gap:7px; align-items:center; }
+.control-footer { display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-top:10px; }
+.utility-buttons { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:7px; }
+button.utility { background:#c87522; border-color:#f0a24d; color:#fff; }
+button.utility:active { background:#a85d17; }
+button, .file-label { border:1px solid #555d6d; border-radius:8px; padding:9px 11px; background:#303642; color:var(--text); font-size:14px; cursor:pointer; touch-action:manipulation; }
+button:active, .file-label:active { background:#454d5c; }
+button.primary { background:#3858a8; border-color:#6484d8; }
+button:disabled { opacity:.45; cursor:default; }
+input[type=file] { display:none; }
+#status { color:var(--muted); font-size:12px; margin-top:9px; line-height:1.5; }
+@media (min-width:800px) { #board { height:68vh; } .card { width:79px; } }
+</style>
+</head>
+<body>
+<header aria-label="操作エリア" class="board-header">
+  <div class="board-heading">
+    <strong id="currentDeckName">1人回しカード盤</strong>
+    <a class="nav-link" href="decks.html">デッキ管理</a>
+  </div>
+</header>
+<main id="board">
+  <div id="empty">デッキ管理からデッキを選んで、一人回しを開始してください。</div>
+</main>
+<section id="controls">
+  <div class="toolbar">
+    <a class="file-label nav-link-button" href="decks.html">デッキ管理へ</a>
+    <input id="images" type="file" accept="image/*" multiple>
+    <button id="shuffle">山札をシャッフル</button>
+    <button id="draw">ドロー</button>
+    <button id="drawDown">裏向きドロー</button>
+    <button id="drawBottom">山下からドロー</button>
+    <button id="drawBottomDown">山下から裏向きドロー</button>
+    <button id="flip">裏返す</button>
+    <button id="tapToggle">横向き/縦向き</button>
+    <button id="rotate90">90度回転</button>
+    <button id="topDeck">山上へ</button>
+    <button id="bottomDeck">山下へ</button>
+  </div>
+  <div class="control-footer">
+    <div id="status">山札 0枚 / 選択 0枚</div>
+    <div class="utility-buttons">
+      <button id="undo" class="utility" disabled>1つ前に戻す</button>
+      <button id="clear" class="utility">選択解除</button>
+    </div>
+  </div>
+</section>
+<script>
+
+const STORAGE_DB = 'soloCardBoardLocal';
+const STORAGE_STORE = 'decks';
+function openDeckDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(STORAGE_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORAGE_STORE)) db.createObjectStore(STORAGE_STORE, {keyPath:'id'});
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function getDeck(id) {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readonly').objectStore(STORAGE_STORE).get(id);
+    req.onsuccess = () => { resolve(req.result || null); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+async function getAllDecks() {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readonly').objectStore(STORAGE_STORE).getAll();
+    req.onsuccess = () => { resolve(req.result || []); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+async function putDeck(deck) {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readwrite').objectStore(STORAGE_STORE).put(deck);
+    req.onsuccess = () => { resolve(true); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+async function deleteDeck(id) {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readwrite').objectStore(STORAGE_STORE).delete(id);
+    req.onsuccess = () => { resolve(true); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+function makeId() {
+  return 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+(async () => {
+  const board = document.getElementById('board');
+  const fileInput = document.getElementById('images');
+  const status = document.getElementById('status');
+  const empty = document.getElementById('empty');
+  let cards = [];
+  let deck = []; // array start = bottom, array end = top
+  let selected = new Set();
+  let nextId = 1;
+  let drag = null;
+  const undoStack = [];
+  const MAX_UNDO = 50;
+
+  function snapshot() {
+    return {
+      cards: cards.map(c => ({id:c.id, src:c.src, name:c.name, x:c.x, y:c.y, facedown:c.facedown, tapped:c.tapped, rotation:c.rotation || 0})),
+      deck: deck.map(d => ({src:d.src, name:d.name})),
+      nextId
+    };
+  }
+  function saveUndo(state = snapshot()) {
+    undoStack.push(state);
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    document.getElementById('undo').disabled = false;
+  }
+  function updateStatus() {
+    status.textContent = `山札 ${deck.length}枚 / 選択 ${selected.size}枚`;
+    empty.style.display = cards.length ? 'none' : 'block';
+    document.getElementById('undo').disabled = undoStack.length === 0;
+  }
+  function updateSelected() {
+    cards.forEach(c => {
+      c.el.classList.toggle('selected', selected.has(c.id));
+      c.el.style.zIndex = selected.has(c.id) ? '10' : String(c.z || 1);
+    });
+    updateStatus();
+  }
+  function applyVisual(card) {
+    card.el.classList.toggle('facedown', card.facedown);
+    card.el.classList.toggle('tapped', card.tapped);
+    card.el.classList.toggle('selected', selected.has(card.id));
+    // Rotation must be applied inline; the previous version updated rotation data
+    // but did not actually apply it to the card element.
+    card.el.style.transform = `rotate(${Number(card.rotation || 0)}deg)`;
+    card.el.style.transformOrigin = 'center center';
+    card.el.style.zIndex = selected.has(card.id) ? '10' : String(card.z || 1);
+  }
+  function mountCard(card) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.style.left = card.x + 'px';
+    el.style.top = card.y + 'px';
+    const img = document.createElement('img');
+    img.src = card.src;
+    img.alt = card.name;
+    el.appendChild(img);
+    el.addEventListener('pointerdown', e => {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      const wasSelected = selected.has(card.id);
+      if (!wasSelected) selected.add(card.id);
+      updateSelected();
+      // Raise the dragged card visually while preserving the selection group.
+      card.z = Math.max(1, ...cards.map(c => c.z || 1)) + 1;
+      el.style.zIndex = String(card.z);
+      board.appendChild(el);
+      const moveIds = selected.has(card.id) ? [...selected] : [card.id];
+      drag = {
+        card, wasSelected, moveIds, startX:e.clientX, startY:e.clientY,
+        moved:false, pointerId:e.pointerId, before:snapshot(),
+        positions: cards.filter(c => moveIds.includes(c.id)).map(c => ({id:c.id,x:c.x,y:c.y}))
+      };
+      try { el.setPointerCapture(e.pointerId); } catch {}
+    });
+    el.addEventListener('pointermove', e => {
+      if (!drag || drag.card !== card || drag.pointerId !== e.pointerId) return;
+      const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+      if (Math.abs(dx) + Math.abs(dy) > 5) drag.moved = true;
+      if (drag.moved) {
+        drag.positions.forEach(pos => {
+          const target = cards.find(c => c.id === pos.id);
+          if (!target) return;
+          target.x = Math.max(0, pos.x + dx);
+          const maxY = Math.max(0, board.clientHeight - target.el.offsetHeight);
+          target.y = Math.max(0, Math.min(maxY, pos.y + dy));
+          target.el.style.left = target.x + 'px';
+          target.el.style.top = target.y + 'px';
+        });
+      }
+    });
+    el.addEventListener('pointerup', e => {
+      if (drag && drag.card === card && drag.pointerId === e.pointerId) {
+        if (drag.moved) {
+          saveUndo(drag.before);
+        } else if (drag.wasSelected) {
+          selected.delete(card.id);
+          updateSelected();
+        }
+        drag = null;
+        updateStatus();
+      }
+    });
+    el.addEventListener('pointercancel', () => { drag = null; });
+    card.el = el;
+    applyVisual(card);
+    board.appendChild(el);
+  }
+  function makeCard(src, name, x, y, facedown=false) {
+    const card = {id:nextId++, src, name, x, y, facedown, tapped:false, rotation:0, z:cards.length+1, el:null};
+    mountCard(card);
+    cards.push(card);
+    updateStatus();
+    return card;
+  }
+  function removeCard(card) {
+    card.el?.remove();
+    cards = cards.filter(c => c.id !== card.id);
+    selected.delete(card.id);
+  }
+  function selectedCards() { return cards.filter(c => selected.has(c.id)); }
+  function shuffleDeck() {
+    for (let i=deck.length-1;i>0;i--) {
+      const j=Math.floor(Math.random()*(i+1));
+      [deck[i],deck[j]]=[deck[j],deck[i]];
+    }
+    updateStatus();
+  }
+  function drawOne(faceDown, fromBottom=false) {
+    if (!deck.length) { alert('山札がありません。画像を追加して山札を作ってください。'); return; }
+    const data = fromBottom ? deck.shift() : deck.pop();
+    const card = {id:nextId++, src:data.src, name:data.name, x:12+(cards.length%6)*65, y:12+(Math.floor(cards.length/6)%5)*84, facedown:!!faceDown, tapped:false, rotation:0, z:cards.length+1, el:null};
+    card.y = Math.max(0, Math.min(card.y, board.clientHeight - Math.min(84, board.clientHeight)));
+    mountCard(card);
+    card.y = Math.max(0, Math.min(card.y, board.clientHeight - card.el.offsetHeight));
+    card.el.style.top = card.y + 'px';
+    cards.push(card);
+    selected.clear();
+    selected.add(card.id);
+    updateSelected();
+    updateStatus();
+  }
+  // Decks are created and saved on the separate deck-management page.
+  fileInput.addEventListener('change', () => {
+    alert('デッキ管理ページからデッキを登録してください。');
+    fileInput.value = '';
+  });
+  document.getElementById('draw').onclick = () => { if (deck.length) saveUndo(); drawOne(false, false); };
+  document.getElementById('drawDown').onclick = () => { if (deck.length) saveUndo(); drawOne(true, false); };
+  document.getElementById('drawBottom').onclick = () => { if (deck.length) saveUndo(); drawOne(false, true); };
+  document.getElementById('drawBottomDown').onclick = () => { if (deck.length) saveUndo(); drawOne(true, true); };
+  document.getElementById('shuffle').onclick = () => { if (deck.length > 1) saveUndo(); shuffleDeck(); };
+  document.getElementById('flip').onclick = () => {
+    const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
+    chosen.forEach(c => { c.facedown=!c.facedown; applyVisual(c); });
+  };
+  document.getElementById('tapToggle').onclick = () => {
+    const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
+    // If any selected card is vertical, make all selected cards horizontal.
+    // If all are already horizontal, make all selected cards vertical.
+    const makeHorizontal = chosen.some(c => (Number(c.rotation || 0) % 180) === 0);
+    chosen.forEach(c => {
+      c.rotation = makeHorizontal ? 90 : 0;
+      c.tapped = makeHorizontal;
+      applyVisual(c);
+    });
+  };
+  document.getElementById('rotate90').onclick = () => {
+    const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
+    chosen.forEach(c => { c.rotation=((c.rotation || 0) + 90) % 360; applyVisual(c); });
+  };
+  document.getElementById('topDeck').onclick = () => {
+    const chosen=selectedCards(); if (chosen.length !== 1) { alert('山札の上へ送るカードを1枚だけ選択してね。'); return; }
+    saveUndo();
+    const c=chosen[0]; deck.push({src:c.src,name:c.name}); removeCard(c); selected.clear(); updateStatus();
+  };
+  document.getElementById('bottomDeck').onclick = () => {
+    const chosen=selectedCards(); if (chosen.length !== 1) { alert('山下へ送るカードを1枚だけ選択してね。'); return; }
+    saveUndo();
+    const c=chosen[0]; deck.unshift({src:c.src,name:c.name}); removeCard(c); selected.clear(); updateStatus();
+  };
+  document.getElementById('undo').onclick = () => {
+    if (!undoStack.length) return;
+    const state=undoStack.pop();
+    cards.forEach(c => c.el?.remove());
+    cards=[];
+    selected.clear();
+    deck=state.deck.map(d => ({...d}));
+    nextId=state.nextId;
+    state.cards.forEach(data => {
+      const card={...data,el:null};
+      mountCard(card);
+      cards.push(card);
+    });
+    updateSelected();
+    updateStatus();
+  };
+  document.getElementById('clear').onclick = () => { selected.clear(); updateSelected(); };
+  // Prevent Safari's gesture zoom and double-tap zoom on the board.
+  document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
+  document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
+  document.addEventListener('gestureend', e => e.preventDefault(), {passive:false});
+  let lastTouchEnd = 0;
+  board.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, {passive:false});
+
+  const params = new URLSearchParams(location.search);
+  const selectedDeckId = params.get('deck');
+  if (selectedDeckId) {
+    try {
+      const savedDeck = await getDeck(selectedDeckId);
+      if (savedDeck) {
+        document.getElementById('currentDeckName').textContent = savedDeck.name;
+        const deckCards = [];
+        (savedDeck.cards || []).forEach(item => {
+          const count = Math.max(0, Number(item.count) || 0);
+          for (let i = 0; i < count; i++) deckCards.push({src:item.src, name:item.name});
+        });
+        deck = deckCards;
+        shuffleDeck();
+      } else {
+        document.getElementById('empty').textContent = 'デッキが見つかりません。デッキ管理から選び直してください。';
+      }
+    } catch (err) {
+      document.getElementById('empty').textContent = '保存データを読み込めませんでした。デッキ管理から確認してください。';
+    }
+  } else {
+    document.getElementById('empty').textContent = 'デッキ管理からデッキを選んで、一人回しを開始してください。';
+  }
+  updateStatus();
+})();
+</script>
+</body>
+</html>

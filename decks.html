@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>デッキ管理 - 1人回しカード盤</title>
+<style>
+:root { --bg:#17191e; --panel:#242832; --line:#414754; --text:#f3f4f6; --muted:#b8bfcc; --accent:#c87522; }
+* { box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+html,body { margin:0; min-height:100%; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+body { padding:16px; }
+main { max-width:1000px; margin:0 auto; }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
+h1 { font-size:22px; margin:0; }
+h2 { font-size:18px; margin:0 0 12px; }
+p { color:var(--muted); line-height:1.6; }
+a { color:#dce4ff; text-decoration:none; }
+button,.button,input[type=text],input[type=number] { font:inherit; border-radius:8px; border:1px solid #555d6d; padding:10px 12px; }
+button,.button { display:inline-flex; align-items:center; justify-content:center; background:#303642; color:var(--text); cursor:pointer; text-decoration:none; }
+button.primary,.button.primary { background:#3858a8; border-color:#6484d8; }
+button.danger { background:#553032; border-color:#875052; }
+button.orange { background:var(--accent); border-color:#f0a24d; }
+input[type=text],input[type=number] { background:#11141a; color:var(--text); width:100%; }
+input[type=file] { display:none; }
+.panel { background:#20232a; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.row > input[type=text] { flex:1; min-width:180px; }
+.deck-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; }
+.deck-card { background:#292e38; border:1px solid #414754; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.deck-card h3 { margin:0; font-size:17px; overflow-wrap:anywhere; }
+.deck-card .meta { color:var(--muted); font-size:13px; }
+.card-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:10px; margin-top:14px; }
+.card-item { background:#292e38; border:1px solid #414754; border-radius:10px; padding:9px; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.card-item img { width:100%; height:170px; object-fit:contain; background:#15171c; border-radius:6px; }
+.card-name { font-size:13px; overflow-wrap:anywhere; }
+.card-item label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+.card-item .remove { width:100%; padding:7px; }
+.editor-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.small { font-size:12px; color:var(--muted); }
+.empty { padding:20px; border:1px dashed #555d6d; border-radius:10px; text-align:center; color:var(--muted); }
+.hidden { display:none !important; }
+#message { min-height:20px; color:#b8d7b8; font-size:13px; margin-top:8px; }
+@media (max-width:520px) {
+ body { padding:12px; }
+ header { align-items:flex-start; }
+ h1 { font-size:19px; }
+ .panel { padding:12px; }
+ .card-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .card-item img { height:145px; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>デッキ管理</h1>
+    <p style="margin:5px 0 0">デッキとカード画像は、このブラウザ内に保存されます。</p>
+  </div>
+  <a href="index.html">一人回し盤へ</a>
+</header>
+
+<section id="listView">
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h2 style="margin-bottom:4px">保存したデッキ</h2>
+        <div class="small">アカウント登録は不要です。保存データはこの端末・ブラウザ内にあります。</div>
+      </div>
+      <button class="primary" id="newDeckBtn">＋ 新しいデッキ</button>
+    </div>
+  </div>
+  <div id="deckList" class="deck-list"></div>
+  <div id="emptyDecks" class="empty hidden">まだデッキがありません。「新しいデッキ」から作成してください。</div>
+</section>
+
+<section id="editorView" class="hidden">
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="editorTitle">新しいデッキ</h2>
+      <button id="backBtn">一覧へ戻る</button>
+    </div>
+    <label class="small" for="deckName">デッキ名</label>
+    <input id="deckName" type="text" maxlength="80" placeholder="例：練習用デッキ" style="margin-top:6px">
+    <div class="row" style="margin-top:14px">
+      <label class="button" for="cardImages">＋ カード画像を追加</label>
+      <input id="cardImages" type="file" accept="image/*" multiple>
+      <button id="saveDeckBtn" class="primary">保存</button>
+      <button id="launchBtn" class="orange">このデッキで一人回し</button>
+    </div>
+    <p class="small">同じカードは画像を1枚だけ登録し、枚数を指定してください。画像はブラウザ内に保存されます。</p>
+    <div id="message"></div>
+    <div id="cardList" class="card-list"></div>
+    <div id="noCards" class="empty">カード画像を追加してください。</div>
+  </div>
+</section>
+</main>
+
+<script>
+
+const STORAGE_DB = 'soloCardBoardLocal';
+const STORAGE_STORE = 'decks';
+function openDeckDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(STORAGE_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORAGE_STORE)) db.createObjectStore(STORAGE_STORE, {keyPath:'id'});
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function getDeck(id) {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readonly').objectStore(STORAGE_STORE).get(id);
+    req.onsuccess = () => { resolve(req.result || null); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+async function getAllDecks() {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readonly').objectStore(STORAGE_STORE).getAll();
+    req.onsuccess = () => { resolve(req.result || []); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+async function putDeck(deck) {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readwrite').objectStore(STORAGE_STORE).put(deck);
+    req.onsuccess = () => { resolve(true); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+async function deleteDeck(id) {
+  const db = await openDeckDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORAGE_STORE, 'readwrite').objectStore(STORAGE_STORE).delete(id);
+    req.onsuccess = () => { resolve(true); db.close(); };
+    req.onerror = () => { reject(req.error); db.close(); };
+  });
+}
+function makeId() {
+  return 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+const listView = document.getElementById('listView');
+const editorView = document.getElementById('editorView');
+const deckListEl = document.getElementById('deckList');
+const emptyDecks = document.getElementById('emptyDecks');
+const cardListEl = document.getElementById('cardList');
+const noCards = document.getElementById('noCards');
+const deckNameInput = document.getElementById('deckName');
+const message = document.getElementById('message');
+let editingDeck = null;
+let cardEntries = [];
+
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function renderDecks() {
+  const decks = (await getAllDecks()).sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  deckListEl.innerHTML = '';
+  emptyDecks.classList.toggle('hidden', decks.length !== 0);
+  decks.forEach(deck => {
+    const total = (deck.cards || []).reduce((sum, c) => sum + (Number(c.count) || 0), 0);
+    const card = document.createElement('article');
+    card.className = 'deck-card';
+    card.innerHTML = `<h3>${escapeHTML(deck.name || '名前のないデッキ')}</h3>
+      <div class="meta">${(deck.cards || []).length}種類 / ${total}枚</div>
+      <div class="row">
+        <a class="button primary" href="index.html?deck=${encodeURIComponent(deck.id)}">一人回し</a>
+        <button data-edit="${escapeHTML(deck.id)}">編集</button>
+        <button class="danger" data-delete="${escapeHTML(deck.id)}">削除</button>
+      </div>`;
+    deckListEl.appendChild(card);
+  });
+  deckListEl.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', async () => {
+    const deck = await getDeck(btn.dataset.edit);
+    if (deck) openEditor(deck);
+  }));
+  deckListEl.querySelectorAll('[data-delete]').forEach(btn => btn.addEventListener('click', async () => {
+    const deck = await getDeck(btn.dataset.delete);
+    if (!deck) return;
+    if (!confirm(`「${deck.name}」を削除しますか？`)) return;
+    await deleteDeck(deck.id);
+    await renderDecks();
+  }));
+}
+function renderCards() {
+  cardListEl.innerHTML = '';
+  noCards.classList.toggle('hidden', cardEntries.length !== 0);
+  cardEntries.forEach((card, index) => {
+    const item = document.createElement('article');
+    item.className = 'card-item';
+    item.innerHTML = `<img alt="" src="${card.src}">
+      <div class="card-name">${escapeHTML(card.name)}</div>
+      <label>枚数
+        <input type="number" min="0" max="100" step="1" value="${Number(card.count) || 0}" data-count="${index}">
+      </label>
+      <button class="remove danger" data-remove="${index}">削除</button>`;
+    cardListEl.appendChild(item);
+  });
+  cardListEl.querySelectorAll('[data-count]').forEach(input => input.addEventListener('change', () => {
+    const n = Math.max(0, Math.min(100, Math.floor(Number(input.value) || 0)));
+    cardEntries[Number(input.dataset.count)].count = n;
+    input.value = n;
+  }));
+  cardListEl.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => {
+    cardEntries.splice(Number(btn.dataset.remove), 1);
+    renderCards();
+  }));
+}
+function openEditor(deck = null) {
+  editingDeck = deck ? {...deck} : {id:makeId(), name:'', cards:[]};
+  cardEntries = (deck?.cards || []).map(c => ({...c}));
+  deckNameInput.value = deck?.name || '';
+  document.getElementById('editorTitle').textContent = deck ? 'デッキを編集' : '新しいデッキ';
+  message.textContent = '';
+  listView.classList.add('hidden');
+  editorView.classList.remove('hidden');
+  renderCards();
+  window.scrollTo(0,0);
+}
+function closeEditor() {
+  editorView.classList.add('hidden');
+  listView.classList.remove('hidden');
+  renderDecks().catch(() => {});
+}
+async function saveCurrentDeck() {
+  const name = deckNameInput.value.trim();
+  if (!name) { message.textContent = 'デッキ名を入力してください。'; return false; }
+  if (!cardEntries.length) { message.textContent = 'カード画像を1種類以上追加してください。'; return false; }
+  const deck = {...editingDeck, name, cards:cardEntries.map(c => ({...c, count:Math.max(0, Math.floor(Number(c.count) || 0))})), updatedAt:Date.now()};
+  try {
+    await putDeck(deck);
+    editingDeck = deck;
+    message.textContent = '保存しました。';
+    await renderDecks();
+    return true;
+  } catch (e) {
+    message.textContent = '保存できませんでした。ブラウザの保存容量を確認してください。';
+    return false;
+  }
+}
+document.getElementById('newDeckBtn').addEventListener('click', () => openEditor());
+document.getElementById('backBtn').addEventListener('click', closeEditor);
+document.getElementById('saveDeckBtn').addEventListener('click', saveCurrentDeck);
+document.getElementById('launchBtn').addEventListener('click', async () => {
+  if (await saveCurrentDeck()) location.href = `index.html?deck=${encodeURIComponent(editingDeck.id)}`;
+});
+document.getElementById('cardImages').addEventListener('change', async e => {
+  const files = [...(e.target.files || [])];
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    try {
+      const src = await fileToDataURL(file);
+      cardEntries.push({id:makeId(), name:file.name.replace(/\.[^.]+$/, ''), src, count:1});
+    } catch {}
+  }
+  e.target.value = '';
+  renderCards();
+});
+(async () => {
+  try {
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('edit');
+    if (editId) {
+      const deck = await getDeck(editId);
+      if (deck) openEditor(deck);
+      else await renderDecks();
+    } else {
+      await renderDecks();
+    }
+  } catch {
+    emptyDecks.textContent = '保存データを読み込めませんでした。このブラウザでIndexedDBが利用できるか確認してください。';
+    emptyDecks.classList.remove('hidden');
+  }
+})();
+</script>
+</body>
+</html>
