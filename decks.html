@@ -249,7 +249,7 @@ function updateVisualPreviews() {
   bgPreview.style.backgroundImage = prefs.background ? `url("${prefs.background}")` : 'radial-gradient(#3b414d 0.7px,transparent 0.7px)';
   bgPreview.style.backgroundColor = '#1b1e24';
   bgPreview.style.backgroundSize = prefs.background ? '100% 100%' : '16px 16px';
-  backPreview.style.backgroundImage = prefs.cardBack ? `url("${prefs.cardBack}")` : `url("${presetBack('blue')}")`;
+  backPreview.style.backgroundImage = prefs.cardBack ? `url("${prefs.cardBack}")` : 'radial-gradient(ellipse at center,#364d88 0 13%,transparent 14%),repeating-linear-gradient(45deg,#1c2b50 0 5px,#334b7b 5px 10px)';
 }
 async function loadVisualFile(input, key) {
   const file = input.files && input.files[0]; if (!file) return;
