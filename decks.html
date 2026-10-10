@@ -245,9 +245,10 @@ function readVisualPrefs() { try { return JSON.parse(localStorage.getItem(VISUAL
 function saveVisualPrefs(prefs) { localStorage.setItem(VISUAL_PREFS_KEY, JSON.stringify(prefs)); updateVisualPreviews(); visualMessage.textContent = '見た目の設定を保存しました。'; }
 function updateVisualPreviews() {
   const prefs = readVisualPrefs();
-  bgPreview.style.backgroundImage = prefs.background ? `url("${prefs.background}")` : `url("${presetBackground('blue')}")`;
-  bgPreview.style.backgroundSize = '100% 100%';
-  bgPreview.style.backgroundSize = '100% 100%';
+  // 初期背景はプリセット画像ではなく、盤面の標準ドット背景を表示する。
+  bgPreview.style.backgroundImage = prefs.background ? `url("${prefs.background}")` : 'radial-gradient(#3b414d 0.7px,transparent 0.7px)';
+  bgPreview.style.backgroundColor = '#1b1e24';
+  bgPreview.style.backgroundSize = prefs.background ? '100% 100%' : '16px 16px';
   backPreview.style.backgroundImage = prefs.cardBack ? `url("${prefs.cardBack}")` : `url("${presetBack('blue')}")`;
 }
 async function loadVisualFile(input, key) {
