@@ -16,7 +16,7 @@ header { padding:10px 12px; background:#20232a; border-bottom:1px solid var(--li
 .nav-link-button { display:inline-flex; align-items:center; text-decoration:none; }
 h1 { font-size:18px; margin:0; }
 .hint { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.5; }
-#board { position:relative; height:62vh; min-height:360px; overflow:auto; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
+#board { position:relative; width:100%; max-width:100vw; height:62vh; min-height:360px; overflow:hidden; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
 .card { width:clamp(50px, 9.9vw, 79px); aspect-ratio:2.5 / 3.5; position:absolute; left:0; top:0; margin:0; border-radius:5px; border:2px solid #596171; background:#111; overflow:hidden; box-shadow:0 3px 8px #0008; user-select:none; touch-action:none; cursor:grab; }
 .card img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; background:#111; }
 .card.selected { outline:3px solid #80a5ff; outline-offset:1px; }
@@ -228,8 +228,11 @@ function makeId() {
         drag.positions.forEach(pos => {
           const target = cards.find(c => c.id === pos.id);
           if (!target) return;
-          target.x = Math.max(0, pos.x + dx);
-          const maxY = Math.max(0, board.clientHeight - target.el.offsetHeight);
+          const cardWidth = target.el.offsetWidth;
+          const cardHeight = target.el.offsetHeight;
+          const maxX = Math.max(0, board.clientWidth - cardWidth);
+          const maxY = Math.max(0, board.clientHeight - cardHeight);
+          target.x = Math.max(0, Math.min(maxX, pos.x + dx));
           target.y = Math.max(0, Math.min(maxY, pos.y + dy));
           target.el.style.left = target.x + 'px';
           target.el.style.top = target.y + 'px';
@@ -310,6 +313,7 @@ function makeId() {
     if (!deck.length) { alert('山札がありません。画像を追加して山札を作ってください。'); return; }
     const data = fromBottom ? deck.shift() : deck.pop();
     const card = {id:nextId++, src:data.src, name:data.name, x:12+(cards.length%6)*65, y:12+(Math.floor(cards.length/6)%5)*84, facedown:!!faceDown, tapped:false, rotation:0, z:cards.length+1, el:null};
+    card.x = Math.max(0, Math.min(card.x, board.clientWidth - 50));
     card.y = Math.max(0, Math.min(card.y, board.clientHeight - Math.min(84, board.clientHeight)));
     mountCard(card);
     card.y = Math.max(0, Math.min(card.y, board.clientHeight - card.el.offsetHeight));
@@ -347,7 +351,16 @@ function makeId() {
   };
   document.getElementById('rotate90').onclick = () => {
     const chosen=selectedCards(); if (!chosen.length) return; saveUndo();
-    chosen.forEach(c => { c.rotation=((c.rotation || 0) + 90) % 360; applyVisual(c); });
+    chosen.forEach(c => {
+      c.rotation=((c.rotation || 0) + 90) % 360;
+      const maxX = Math.max(0, board.clientWidth - c.el.offsetWidth);
+      const maxY = Math.max(0, board.clientHeight - c.el.offsetHeight);
+      c.x = Math.max(0, Math.min(maxX, c.x));
+      c.y = Math.max(0, Math.min(maxY, c.y));
+      c.el.style.left = c.x + 'px';
+      c.el.style.top = c.y + 'px';
+      applyVisual(c);
+    });
   };
   document.getElementById('topDeck').onclick = () => {
     const chosen=selectedCards(); if (chosen.length !== 1) { alert('山札の上へ送るカードを1枚だけ選択してね。'); return; }
