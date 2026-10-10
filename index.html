@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>1人回しカード盤</title>
 <style>
 :root { --bg:#17191e; --panel:#242832; --line:#414754; --text:#f3f4f6; --muted:#b8bfcc; }
 * { box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 html, body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-text-size-adjust:100%; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-body { touch-action:manipulation; }
+body { touch-action:pan-x pan-y pinch-zoom; }
 header { padding:10px 12px; background:#20232a; border-bottom:1px solid var(--line); }
 .board-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .board-heading strong { font-size:15px; font-weight:600; }
@@ -16,7 +16,7 @@ header { padding:10px 12px; background:#20232a; border-bottom:1px solid var(--li
 .nav-link-button { display:inline-flex; align-items:center; text-decoration:none; }
 h1 { font-size:18px; margin:0; }
 .hint { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.5; }
-#board { position:relative; height:62vh; min-height:360px; overflow:auto; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:none; }
+#board { position:relative; height:62vh; min-height:360px; overflow:auto; background-color:#1b1e24; background-image:radial-gradient(#3b414d 0.7px,transparent 0.7px); background-size:16px 16px; touch-action:pan-x pan-y pinch-zoom; }
 .card { width:clamp(50px, 9.9vw, 79px); aspect-ratio:2.5 / 3.5; position:absolute; left:0; top:0; margin:0; border-radius:5px; border:2px solid #596171; background:#111; overflow:hidden; box-shadow:0 3px 8px #0008; user-select:none; touch-action:none; cursor:grab; }
 .card img { width:100%; height:100%; object-fit:contain; display:block; pointer-events:none; background:#111; }
 .card.selected { outline:3px solid #80a5ff; outline-offset:1px; }
@@ -44,6 +44,22 @@ input[type=file] { display:none; }
 button.shuffle-start { background:#258447; border-color:#48b96e; color:#fff; font-weight:600; }
 button.shuffle-start:active { background:#1d6b39; }
 
+
+.toolbar, .utility-buttons { display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:8px 5px; align-items:start; }
+.control-tile { min-width:0; width:100%; padding:0; border:0; background:transparent; display:flex; flex-direction:column; align-items:center; gap:4px; overflow:visible; }
+.control-tile:active { background:transparent; }
+.tile-icon { width:min(100%,58px); aspect-ratio:1 / 1; display:flex; align-items:center; justify-content:center; border:1px solid #555d6d; border-radius:9px; background:#303642; color:var(--text); }
+.tile-icon svg { width:29px; height:29px; }
+.control-tile:active .tile-icon { background:#454d5c; }
+.tile-label { display:block; width:100%; max-width:100%; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:clip; text-align:center; font-size:clamp(6px, 1.65vw, 10px); line-height:1.25; letter-spacing:-.04em; }
+button.control-tile.shuffle-start .tile-icon { background:#258447; border-color:#48b96e; color:#fff; }
+button.control-tile.shuffle-start .tile-label { color:#8ce6a7; font-weight:600; font-size:clamp(5px, 1.35vw, 8px); }
+button.control-tile.utility .tile-icon { background:#c87522; border-color:#f0a24d; color:#fff; }
+button.control-tile:disabled .tile-icon { opacity:.45; }
+.control-footer { align-items:center; flex-wrap:wrap; }
+#status { flex:1 1 120px; }
+.utility-buttons { flex:0 0 auto; grid-template-columns:repeat(2,64px); }
+
 </style>
 </head>
 <body>
@@ -58,26 +74,25 @@ button.shuffle-start:active { background:#1d6b39; }
 </main>
 <section id="controls">
   <div class="toolbar">
-    <a class="file-label nav-link-button" href="decks.html">デッキ管理へ</a>
     <input id="images" type="file" accept="image/*" multiple>
-    <button id="shuffle">山札シャッフル</button>
-    <button id="draw">ドロー</button>
-    <button id="drawDown">裏向きドロー</button>
-    <button id="drawBottom">山下からドロー</button>
-    <button id="drawBottomDown">山下から裏向きドロー</button>
-    <button id="flip">裏返す</button>
-    <button id="tapToggle">横向き/縦向き</button>
-    <button id="rotate90">90度回転</button>
-    <button id="topDeck">山上へ</button>
-    <button id="bottomDeck">山下へ</button>
-    <button id="shuffleToTop">シャッフルして山上へ</button>
-    <button id="shuffleToBottom">シャッフルして山下へ</button>
+    <button id="shuffle" class="control-tile shuffle-start" aria-label="山札シャッフル"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="m16 6 5-3"/></g></svg></span><span class="tile-label">山札シャッフル</span></button>
+    <button id="draw" class="control-tile " aria-label="ドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></g></svg></span><span class="tile-label">ドロー</span></button>
+    <button id="drawDown" class="control-tile " aria-label="裏向きドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 8 8 8m0-5v5h-5"/></g></svg></span><span class="tile-label">裏向きドロー</span></button>
+    <button id="drawBottom" class="control-tile " aria-label="山下からドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/><path d="M8 5H5v3"/></g></svg></span><span class="tile-label">山下からドロー</span></button>
+    <button id="drawBottomDown" class="control-tile " aria-label="山下から裏向きドロー"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 8 8 8m0-5v5h-5"/><path d="M8 5H5v3"/></g></svg></span><span class="tile-label">山下から裏向きドロー</span></button>
+    <button id="flip" class="control-tile " aria-label="裏返す"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 7l8 4 8-4-8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></g></svg></span><span class="tile-label">裏返す</span></button>
+    <button id="tapToggle" class="control-tile " aria-label="横向き/縦向き"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 12h3m12 0h3"/></g></svg></span><span class="tile-label">横向き/縦向き</span></button>
+    <button id="rotate90" class="control-tile " aria-label="90度回転"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0 2 5"/><path d="M20 4v7h-7"/></g></svg></span><span class="tile-label">90度回転</span></button>
+    <button id="topDeck" class="control-tile " aria-label="山上へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16"/><path d="m8 4 4-3 4 3"/><path d="M12 2v12"/><path d="M5 12v9h14v-9"/></g></svg></span><span class="tile-label">山上へ</span></button>
+    <button id="bottomDeck" class="control-tile " aria-label="山下へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16h16"/><path d="m8 20 4 3 4-3"/><path d="M12 22V10"/><path d="M5 3v9h14V3"/></g></svg></span><span class="tile-label">山下へ</span></button>
+    <button id="shuffleToTop" class="control-tile " aria-label="シャッフルして山上へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="M12 2v7"/><path d="m9 6 3 3 3-3"/></g></svg></span><span class="tile-label">シャッフルして山上へ</span></button>
+    <button id="shuffleToBottom" class="control-tile " aria-label="シャッフルして山下へ"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 7h3c5 0 5 10 10 10h4"/><path d="m18 14 3 3-3 3"/><path d="M4 17h3c2 0 3-2 4-4"/><path d="M12 15v7"/><path d="m9 19 3 3 3-3"/></g></svg></span><span class="tile-label">シャッフルして山下へ</span></button>
   </div>
   <div class="control-footer">
     <div id="status">山札 0枚 / 選択 0枚</div>
     <div class="utility-buttons">
-      <button id="undo" class="utility" disabled>1つ前に戻す</button>
-      <button id="clear" class="utility">選択解除</button>
+      <button id="undo" class="control-tile utility" aria-label="1つ前に戻す"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-2"/></g></svg></span><span class="tile-label">1つ前に戻す</span></button>
+      <button id="clear" class="control-tile utility" aria-label="選択解除"><span class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l14 14M19 5 5 19"/></g></svg></span><span class="tile-label">選択解除</span></button>
     </div>
   </div>
 </section>
@@ -261,11 +276,11 @@ function makeId() {
   }
   const shuffleButton = document.getElementById('shuffle');
   function setNormalShuffleButton() {
-    shuffleButton.textContent = '山札シャッフル';
+    shuffleButton.querySelector('.tile-label').textContent = '山札シャッフル';
     shuffleButton.classList.remove('shuffle-start');
   }
   function setStartShuffleButton() {
-    shuffleButton.textContent = 'シャッフルしてひとり回しを始める';
+    shuffleButton.querySelector('.tile-label').textContent = 'シャッフルしてひとり回しを始める';
     shuffleButton.classList.add('shuffle-start');
   }
   function shuffleSelectedIntoDeck(toTop) {
@@ -368,14 +383,11 @@ function makeId() {
   document.querySelectorAll('button:not(#shuffle)').forEach(button => {
     button.addEventListener('click', setNormalShuffleButton);
   });
-  // Prevent Safari's gesture zoom and double-tap zoom on the board.
-  document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
-  document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
-  document.addEventListener('gestureend', e => e.preventDefault(), {passive:false});
+  // Suppress only double-tap zoom on the board; ordinary pinch zoom remains available.
   let lastTouchEnd = 0;
   board.addEventListener('touchend', e => {
     const now = Date.now();
-    if (now - lastTouchEnd <= 300) e.preventDefault();
+    if (now - lastTouchEnd <= 300 && e.cancelable) e.preventDefault();
     lastTouchEnd = now;
   }, {passive:false});
 
