@@ -843,7 +843,7 @@ function makeId() {
     const color = suit === '♥' || suit === '♦' || joker ? '#c92735' : '#20242b';
     const safeGlyph = String(glyph).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const label = joker ? '🃟' : safeGlyph;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="150" y="270" text-anchor="middle" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif" font-size="260" fill="${color}">${label}</text></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="150" y="280" text-anchor="middle" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif" font-size="330" fill="${color}">${label}</text></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
   function makeDefaultPlayingDeck() {
