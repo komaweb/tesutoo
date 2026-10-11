@@ -99,7 +99,7 @@ input[type=file] { display:none; }
 .editor-heading h2 { margin:0; }
 .editor-close { width:44px; height:44px; font-size:28px; padding:0; flex:0 0 auto; }
 .editor-preview-panel { margin-top:14px; }
-.editor-preview-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; max-height:420px; overflow-y:auto; padding:7px; background:#191c22; border:1px solid #414754; border-radius:8px; }
+.editor-preview-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); grid-auto-rows:max-content; gap:5px; height:420px; max-height:none; overflow-y:auto; padding:7px; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:#191c22; border:1px solid #414754; border-radius:8px; }
 .editor-preview-grid .preview-card img { display:block; width:100%; aspect-ratio:5/7; object-fit:contain; background:#11141a; border-radius:4px; }
 .editor-preview-grid .preview-card { min-width:0; }
 .card-list { display:flex; flex-direction:row; flex-wrap:nowrap; overflow-x:auto; gap:10px; padding:4px 2px 12px; margin-top:14px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }
@@ -508,6 +508,29 @@ async function renderDecks() {
     await renderDecks();
   }));
 }
+function sizeEditorPreview() {
+  const preview = document.getElementById('editorDeckPreview');
+  if (!preview) return;
+  const cs = getComputedStyle(preview);
+  const px = value => Number.parseFloat(value) || 0;
+  const innerWidth = preview.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight);
+  const gap = px(cs.columnGap);
+  const cardWidth = Math.max(0, (innerWidth - gap * 7) / 8);
+  const cardHeight = cardWidth * 1.4;
+  const rowGap = px(cs.rowGap);
+  const height = px(cs.paddingTop) + px(cs.paddingBottom) + cardHeight * 5.45 + rowGap * 4 + 2;
+  preview.style.height = `${Math.ceil(height)}px`;
+}
+window.addEventListener('resize', sizeEditorPreview);
+if ('ResizeObserver' in window) {
+  const previewResizeObserver = new ResizeObserver(sizeEditorPreview);
+  window.addEventListener('load', () => {
+    const preview = document.getElementById('editorDeckPreview');
+    if (preview) previewResizeObserver.observe(preview);
+    sizeEditorPreview();
+  });
+}
+
 function renderCards() {
   cardListEl.innerHTML = '';
   noCards.classList.toggle('hidden', cardEntries.length !== 0);
@@ -540,6 +563,7 @@ function renderCards() {
   });
   previewEmpty.classList.toggle('hidden', expanded.length > 0);
   previewSummary.textContent = `${cardEntries.length}種類 / 合計${total}枚`;
+  sizeEditorPreview();
 
   cardListEl.querySelectorAll('[data-minus]').forEach(btn => btn.addEventListener('click', () => {
     const index = Number(btn.dataset.minus);
