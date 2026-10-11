@@ -216,6 +216,24 @@ button.control-tile:disabled { opacity:.45; }
   .control-footer .utility-buttons .control-tile { aspect-ratio:auto !important; height:clamp(30px, calc((100vw - 300px) / 9 * .67), 42px); }
 }
 
+
+/* Utility buttons: preserve icon + label without clipping on short tiles. */
+.control-footer .utility-buttons .control-tile {
+  flex-direction:column !important; justify-content:center; align-items:center;
+  min-width:0; overflow:hidden; padding:2px 1px; gap:1px;
+}
+.control-footer .utility-buttons .tile-icon { width:25%; max-width:14px; min-width:10px; height:auto; flex:0 0 auto; }
+.control-footer .utility-buttons .tile-label {
+  display:block; width:100%; max-width:100%; min-width:0; height:auto;
+  font-size:clamp(7px, 2.1vw, 10px) !important; line-height:1.05;
+  letter-spacing:0; white-space:normal !important; overflow:visible;
+  overflow-wrap:anywhere; word-break:keep-all; text-overflow:clip; text-align:center;
+}
+@media (orientation:landscape) and (min-width:600px) {
+  .control-footer .utility-buttons .tile-icon { width:28%; max-width:15px; }
+  .control-footer .utility-buttons .tile-label { font-size:clamp(7px, .85vw, 9px) !important; }
+}
+
 </style>
 </head>
 <body>
@@ -821,21 +839,32 @@ function makeId() {
     if (visualPrefs.background) { board.style.backgroundImage = `url("${visualPrefs.background}")`; board.style.backgroundSize = '100% 100%'; board.style.backgroundPosition = 'center'; }
     if (visualPrefs.cardBack) document.documentElement.style.setProperty('--custom-card-back', `url("${visualPrefs.cardBack}")`);
   } catch {}
-  function makePlayingCardSvg(rank, suit, joker=false) {
-    const red = suit === '♥' || suit === '♦' || joker;
-    const color = red ? '#c92735' : '#20242b';
-    const safeRank = String(rank).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const title = joker ? 'JOKER' : `${rank}${suit}`;
-    const center = joker ? `<text x="150" y="250" text-anchor="middle" font-family="Georgia,serif" font-size="72" font-weight="bold" fill="${color}">JOKER</text><text x="150" y="315" text-anchor="middle" font-size="56" fill="${color}">★</text>` : `<text x="150" y="230" text-anchor="middle" font-family="Georgia,serif" font-size="100" fill="${color}">${suit}</text><text x="150" y="320" text-anchor="middle" font-family="Georgia,serif" font-size="40" fill="${color}">${safeRank}</text>`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="24" y="48" font-family="Georgia,serif" font-size="34" font-weight="bold" fill="${color}">${joker ? '★' : safeRank}</text><text x="24" y="79" font-family="Georgia,serif" font-size="28" fill="${color}">${joker ? '' : suit}</text><g transform="translate(0 0)">${center}</g><g transform="rotate(180 150 210)"><text x="24" y="48" font-family="Georgia,serif" font-size="34" font-weight="bold" fill="${color}">${joker ? '★' : safeRank}</text><text x="24" y="79" font-family="Georgia,serif" font-size="28" fill="${color}">${joker ? '' : suit}</text></g></svg>`;
+  function makePlayingCardSvg(rank, suit, joker=false, glyph='🃏') {
+    const color = suit === '♥' || suit === '♦' || joker ? '#c92735' : '#20242b';
+    const safeGlyph = String(glyph).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const label = joker ? '🃏' : safeGlyph;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="150" y="270" text-anchor="middle" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif" font-size="205" fill="${color}">${label}</text></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
   function makeDefaultPlayingDeck() {
     const cards = [];
-    const suits = ['♠','♥','♦','♣'];
-    const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-    for (const suit of suits) for (const rank of ranks) cards.push({src:makePlayingCardSvg(rank,suit), name:`${rank}${suit}`, count:1});
-    cards.push({src:makePlayingCardSvg('JOKER','',true), name:'ジョーカー', count:1});
+    const suits = [
+      {symbol:'♠', base:0x1F0A1},
+      {symbol:'♥', base:0x1F0B1},
+      {symbol:'♦', base:0x1F0C1},
+      {symbol:'♣', base:0x1F0D1}
+    ];
+    const ranks = [
+      {name:'A', offset:0}, {name:'2', offset:1}, {name:'3', offset:2},
+      {name:'4', offset:3}, {name:'5', offset:4}, {name:'6', offset:5},
+      {name:'7', offset:6}, {name:'8', offset:7}, {name:'9', offset:8},
+      {name:'10', offset:9}, {name:'J', offset:10}, {name:'Q', offset:12}, {name:'K', offset:13}
+    ];
+    for (const suit of suits) for (const rank of ranks) {
+      const glyph = String.fromCodePoint(suit.base + rank.offset);
+      cards.push({src:makePlayingCardSvg(rank.name,suit.symbol,false,glyph), name:`${rank.name}${suit.symbol}`, count:1});
+    }
+    cards.push({src:makePlayingCardSvg('JOKER','',true,'🃏'), name:'ジョーカー', count:1});
     return {id:'__default_playing_cards__', name:'トランプ(デッキ管理ボタンからデッキを追加できます)', cards};
   }
   function loadDeckForBoard(savedDeck) {
