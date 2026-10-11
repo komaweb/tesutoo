@@ -397,7 +397,7 @@ function makeId() {
     updateSelected(); updateStatus(); refreshProbabilityUI(); updateHistoryButtons();
   }
   function updateStatus() {
-    status.textContent = `山札 ${deck.length}枚 / 選択 ${selected.size}枚`;
+    status.innerHTML = `山札${deck.length}枚<br>選択${selected.size}枚`;
     empty.style.display = cards.length ? 'none' : 'block';
     updateHistoryButtons();
   }
@@ -842,8 +842,8 @@ function makeId() {
   function makePlayingCardSvg(rank, suit, joker=false, glyph='🃏') {
     const color = suit === '♥' || suit === '♦' || joker ? '#c92735' : '#20242b';
     const safeGlyph = String(glyph).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const label = joker ? '🃏' : safeGlyph;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="150" y="270" text-anchor="middle" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif" font-size="205" fill="${color}">${label}</text></svg>`;
+    const label = joker ? '🃟' : safeGlyph;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420"><rect x="3" y="3" width="294" height="414" rx="18" fill="#fff" stroke="#c7cbd1" stroke-width="6"/><text x="150" y="270" text-anchor="middle" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif" font-size="260" fill="${color}">${label}</text></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
   function makeDefaultPlayingDeck() {
@@ -864,7 +864,7 @@ function makeId() {
       const glyph = String.fromCodePoint(suit.base + rank.offset);
       cards.push({src:makePlayingCardSvg(rank.name,suit.symbol,false,glyph), name:`${rank.name}${suit.symbol}`, count:1});
     }
-    cards.push({src:makePlayingCardSvg('JOKER','',true,'🃏'), name:'ジョーカー', count:1});
+    cards.push({src:makePlayingCardSvg('JOKER','',true,'🃟'), name:'ジョーカー', count:1});
     return {id:'__default_playing_cards__', name:'トランプ(デッキ管理ボタンからデッキを追加できます)', cards};
   }
   function loadDeckForBoard(savedDeck) {
